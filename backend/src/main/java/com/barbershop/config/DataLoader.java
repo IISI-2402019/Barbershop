@@ -1,9 +1,7 @@
 package com.barbershop.config;
 
-import com.barbershop.model.Service;
-import com.barbershop.model.Stylist;
-import com.barbershop.model.User;
-import com.barbershop.model.UserRole;
+import com.barbershop.model.*;
+import com.barbershop.repository.AppointmentRepository;
 import com.barbershop.repository.ServiceRepository;
 import com.barbershop.repository.StylistRepository;
 import com.barbershop.repository.UserRepository;
@@ -12,12 +10,16 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Configuration
 public class DataLoader {
 
     @Bean
-    CommandLineRunner initDatabase(StylistRepository stylistRepository, ServiceRepository serviceRepository, UserRepository userRepository) {
+    CommandLineRunner initDatabase(StylistRepository stylistRepository, 
+                                   ServiceRepository serviceRepository, 
+                                   UserRepository userRepository,
+                                   AppointmentRepository appointmentRepository) {
         return args -> {
             // Initialize Stylists
             if (stylistRepository.count() == 0) {
@@ -38,11 +40,23 @@ public class DataLoader {
 
             // Initialize Users (Admin)
             if (userRepository.count() == 0) {
-                // 這裡只是一個範例，實際的 lineUserId 需要填入真實的 ID 才能測試登入
                 User admin = new User("U1234567890abcdef1234567890abcdef", "Admin User", UserRole.ADMIN);
                 admin.setRealName("System Admin");
                 userRepository.save(admin);
                 System.out.println("Default admin user initialized.");
+            }
+            
+            // Initialize Dummy Appointment (Optional)
+            if (appointmentRepository.count() == 0 && userRepository.count() > 0 && stylistRepository.count() > 0 && serviceRepository.count() > 0) {
+                User user = userRepository.findAll().get(0);
+                Stylist stylist = stylistRepository.findAll().get(0);
+                Service service = serviceRepository.findAll().get(0);
+                
+                LocalDateTime start = LocalDateTime.now().plusDays(1).withHour(14).withMinute(0);
+                LocalDateTime end = start.plusMinutes((long)(service.getDurationHours() * 60));
+                
+                appointmentRepository.save(new Appointment(user, stylist, service, start, end, AppointmentStatus.BOOKED));
+                System.out.println("Default appointment initialized.");
             }
         };
     }

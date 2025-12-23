@@ -24,3 +24,15 @@ CREATE TABLE IF NOT EXISTS users (
     role VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 如果資料表不存在，則建立 Appointments 表
+CREATE TABLE IF NOT EXISTS appointments (
+    id BIGSERIAL PRIMARY KEY,
+    customer_id BIGINT NOT NULL REFERENCES users(id),
+    stylist_id BIGINT NOT NULL REFERENCES stylists(id),
+    service_id BIGINT NOT NULL REFERENCES services(id),
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    status VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
