@@ -5,7 +5,8 @@ import { initLiff } from './utils/liff'
 import { useUserStore } from './stores/user'
 
 const userStore = useUserStore()
-const liffId = import.meta.env.VITE_LIFF_ID || 'YOUR_LIFF_ID' // Replace with env var
+const liffId = import.meta.env.VITE_LIFF_ID
+
 
 onMounted(async () => {
   // Only init LIFF if ID is present (skip in local dev if needed, or use mock)
