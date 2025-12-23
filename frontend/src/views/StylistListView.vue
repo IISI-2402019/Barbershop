@@ -20,24 +20,26 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const router = useRouter()
+const stylists = ref([])
 
-// Mock data
-const stylists = ref([
-    { id: 1, name: 'Alice', specialty: 'Cut & Color', avatar: '' },
-    { id: 2, name: 'Bob', specialty: 'Perm & Treatment', avatar: '' },
-    { id: 3, name: 'Charlie', specialty: 'Men\'s Cut', avatar: '' }
-])
+onMounted(async () => {
+  try {
+    const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/stylists`)
+    stylists.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch stylists', error)
+  }
+})
 
 const selectStylist = (id) => {
-    router.push({ name: 'booking', query: { stylistId: id } })
+  router.push({ name: 'booking', query: { stylistId: id } })
 }
-</script>
-
-<style scoped>
+</script><style scoped>
 .stylist-list {
     padding: 20px;
 }

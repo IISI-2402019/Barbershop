@@ -42,63 +42,86 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import axios from 'axios'
+import { useUserStore } from '../stores/user'
 
 const route = useRoute()
 const router = useRouter()
+const userStore = useUserStore()
 
-// Mock Data
-const stylists = [
-    { id: 1, name: 'Alice' },
-    { id: 2, name: 'Bob' },
-    { id: 3, name: 'Charlie' }
-]
-
-const services = [
-    { id: 1, name: 'Cut + Wash', duration: 1 },
-    { id: 2, name: 'Scalp Treatment', duration: 1.5 },
-    { id: 3, name: 'Hair Dye', duration: 2 },
-    { id: 4, name: 'Perm', duration: 3 }
-]
+const stylists = ref([])
+const services = ref([])
 
 const form = ref({
-    stylistId: null,
-    serviceId: null,
-    date: '',
-    time: ''
+  stylistId: null,
+  serviceId: null,
+  date: '',
+  time: ''
 })
 
-onMounted(() => {
-    if (route.query.stylistId) {
-        form.value.stylistId = parseInt(route.query.stylistId)
-    }
+onMounted(async () => {
+  // Fetch Stylists
+  try {
+    const sRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/stylists`)
+    stylists.value = sRes.data
+  } catch (e) {
+    console.error('Failed to load stylists', e)
+  }
+
+  // Fetch Services
+  try {
+    const svRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/services`)
+    services.value = svRes.data
+  } catch (e) {
+    console.error('Failed to load services', e)
+  }
+
+  if (route.query.stylistId) {
+    form.value.stylistId = parseInt(route.query.stylistId)
+  }
 })
 
 const disabledDate = (time) => {
-    // Example: Disable past dates
-    return time.getTime() < Date.now() - 8.64e7
+  return time.getTime() < Date.now() - 8.64e7
 }
 
 const updateDuration = () => {
-    // Logic to calculate end time could go here
+  // Logic to calculate end time could go here
 }
 
-const submitBooking = () => {
-    if (!form.value.serviceId || !form.value.date || !form.value.time) {
-        ElMessage.error('Please fill in all fields')
-        return
+const submitBooking = async () => {
+  if (!form.value.serviceId || !form.value.date || !form.value.time) {
+    ElMessage.error('Please fill in all fields')
+    return
+  }
+
+  if (!userStore.dbUser) {
+    ElMessage.error('User not logged in. Please refresh.')
+    return
+  }
+  
+  try {
+    const startTime = `${form.value.date}T${form.value.time}:00`
+    
+    const payload = {
+      userId: userStore.dbUser.id,
+      stylistId: form.value.stylistId,
+      serviceId: form.value.serviceId,
+      startTime: startTime
     }
 
-    // TODO: Call API to save booking
-    console.log('Booking Data:', form.value)
-
+    await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/appointments`, payload)
+    
     ElMessage.success('Booking Submitted!')
     setTimeout(() => {
-        router.push('/')
+      router.push('/')
     }, 1500)
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(error.response?.data || 'Booking failed')
+  }
 }
-</script>
-
-<style scoped>
+</script><style scoped>
 .booking-container {
     padding: 20px;
     max-width: 600px;
