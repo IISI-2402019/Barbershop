@@ -5,12 +5,13 @@ import { initLiff } from './utils/liff'
 import { useUserStore } from './stores/user'
 
 const userStore = useUserStore()
-const liffId = import.meta.env.VITE_LIFF_ID
+// Fallback to hardcoded ID if env var is missing (common in some PaaS builds)
+const liffId = import.meta.env.VITE_LIFF_ID || '2008756214-RUOCo5l1'
 
 console.log('Current LIFF ID:', liffId) // Debug log
 
 onMounted(async () => {
-  // Only init LIFF if ID is present (skip in local dev if needed, or use mock)
+  // Only init LIFF if ID is present
   if (liffId && liffId !== 'YOUR_LIFF_ID') {
     try {
       const profile = await initLiff(liffId)
