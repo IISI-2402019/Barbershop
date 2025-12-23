@@ -3,10 +3,11 @@ import { onMounted } from 'vue'
 import { RouterView } from 'vue-router'
 import { initLiff } from './utils/liff'
 import { useUserStore } from './stores/user'
+import { config } from './config'
 
 const userStore = useUserStore()
 // Fallback to hardcoded ID if env var is missing (common in some PaaS builds)
-const liffId = import.meta.env.VITE_LIFF_ID || '2008756214-RUOCo5l1'
+const liffId = config.liffId
 
 console.log('Current LIFF ID:', liffId) // Debug log
 

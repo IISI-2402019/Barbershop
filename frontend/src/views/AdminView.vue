@@ -26,6 +26,7 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
+import { config } from '../config'
 
 const userStore = useUserStore()
 const activeTab = ref('appointments')
@@ -41,7 +42,7 @@ const fetchAppointments = async () => {
     try {
         // Assuming we will have an endpoint for all appointments
         // For now, let's just try to fetch something or mock it if the endpoint doesn't exist yet
-        // const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/appointments`)
+        // const response = await axios.get(`${config.apiBaseUrl}/api/appointments`)
         // appointments.value = response.data
 
         // Mock data for visualization until backend is ready

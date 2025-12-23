@@ -23,13 +23,14 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { config } from '../config'
 
 const router = useRouter()
 const stylists = ref([])
 
 onMounted(async () => {
     try {
-        const response = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/stylists`)
+        const response = await axios.get(`${config.apiBaseUrl}/api/stylists`)
         stylists.value = response.data
     } catch (error) {
         console.error('Failed to fetch stylists', error)

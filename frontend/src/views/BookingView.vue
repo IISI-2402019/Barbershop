@@ -44,6 +44,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
+import { config } from '../config'
 
 const route = useRoute()
 const router = useRouter()
@@ -62,7 +63,7 @@ const form = ref({
 onMounted(async () => {
     // Fetch Stylists
     try {
-        const sRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/stylists`)
+        const sRes = await axios.get(`${config.apiBaseUrl}/api/stylists`)
         stylists.value = sRes.data
     } catch (e) {
         console.error('Failed to load stylists', e)
@@ -70,7 +71,7 @@ onMounted(async () => {
 
     // Fetch Services
     try {
-        const svRes = await axios.get(`${import.meta.env.VITE_API_BASE_URL}/api/services`)
+        const svRes = await axios.get(`${config.apiBaseUrl}/api/services`)
         services.value = svRes.data
     } catch (e) {
         console.error('Failed to load services', e)
@@ -110,7 +111,7 @@ const submitBooking = async () => {
             startTime: startTime
         }
 
-        await axios.post(`${import.meta.env.VITE_API_BASE_URL}/api/appointments`, payload)
+        await axios.post(`${config.apiBaseUrl}/api/appointments`, payload)
 
         ElMessage.success('Booking Submitted!')
         setTimeout(() => {
