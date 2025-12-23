@@ -31,12 +31,14 @@ export const useUserStore = defineStore('user', () => {
     } finally {
       isLoading.value = false
     }
-  }    return {
-        profile,
-        dbUser,
-        isLoggedIn,
-        isLoading,
-        setProfile,
-        loginToBackend
-    }
+  }
+
+  return {
+    profile,
+    dbUser,
+    isLoggedIn,
+    isLoading,
+    setProfile,
+    loginToBackend
+  }
 })
