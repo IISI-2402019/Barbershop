@@ -7,6 +7,7 @@ import { useUserStore } from './stores/user'
 const userStore = useUserStore()
 const liffId = import.meta.env.VITE_LIFF_ID
 
+console.log('Current LIFF ID:', liffId) // Debug log
 
 onMounted(async () => {
   // Only init LIFF if ID is present (skip in local dev if needed, or use mock)
