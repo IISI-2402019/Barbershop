@@ -3,3 +3,13 @@ node_modules/
 Thumbs.db
 .vscode/
 *.log
+
+# Spring Boot
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+*.class
+
+# Secrets
+application-local.properties
+.env
