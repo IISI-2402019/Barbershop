@@ -1,13 +1,14 @@
 <template>
     <div class="home">
         <h1>Barbershop Appointment System</h1>
-        
+
         <div v-if="userStore.isLoggedIn" class="user-info">
             <p>Welcome, {{ userStore.profile?.displayName }}</p>
             <div class="actions">
                 <el-button type="primary" size="large" @click="$router.push('/stylists')">Book Now</el-button>
                 <el-button size="large" @click="$router.push('/my-appointments')">My Appointments</el-button>
-                <el-button v-if="userStore.dbUser?.role === 'ADMIN'" type="warning" size="large" @click="$router.push('/admin')">Admin Dashboard</el-button>
+                <el-button v-if="userStore.dbUser?.role === 'ADMIN'" type="warning" size="large"
+                    @click="$router.push('/admin')">Admin Dashboard</el-button>
             </div>
         </div>
 

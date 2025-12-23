@@ -24,8 +24,8 @@ onMounted(async () => {
     console.warn('LIFF ID not found. Running in standalone mode.')
     // Mock login for dev
     if (import.meta.env.DEV) {
-       userStore.setProfile({ userId: 'mock_user', displayName: 'Dev User' })
-       // userStore.loginToBackend() // Uncomment to test backend in dev
+      userStore.setProfile({ userId: 'mock_user', displayName: 'Dev User' })
+      // userStore.loginToBackend() // Uncomment to test backend in dev
     }
   }
 })
@@ -45,7 +45,7 @@ onMounted(async () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(255,255,255,0.8);
+  background: rgba(255, 255, 255, 0.8);
   display: flex;
   justify-content: center;
   align-items: center;
