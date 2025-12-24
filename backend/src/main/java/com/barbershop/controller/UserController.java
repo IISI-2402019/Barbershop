@@ -19,6 +19,7 @@ public class UserController {
 
     @PostMapping("/login")
     public ResponseEntity<User> login(@RequestBody LoginRequest request) {
+        System.out.println("Login request received for Line User ID: " + request.getLineUserId()); // Debug log
         Optional<User> existingUser = userRepository.findByLineUserId(request.getLineUserId());
 
         if (existingUser.isPresent()) {
