@@ -18,6 +18,7 @@ public class UserController {
     private UserRepository userRepository;
 
     @PostMapping("/login")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<User> login(@RequestBody LoginRequest request) {
         System.out.println("Login request received for Line User ID: " + request.getLineUserId()); // Debug log
         Optional<User> existingUser = userRepository.findByLineUserId(request.getLineUserId());
