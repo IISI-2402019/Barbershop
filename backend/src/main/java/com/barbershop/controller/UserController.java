@@ -21,16 +21,19 @@ public class UserController {
     public ResponseEntity<User> login(@RequestBody LoginRequest request) {
         System.out.println("Login request received for Line User ID: " + request.getLineUserId()); // Debug log
         Optional<User> existingUser = userRepository.findByLineUserId(request.getLineUserId());
-
+        System.out.println("Existing user found: " + existingUser.isPresent()); // Debug log
         if (existingUser.isPresent()) {
             User user = existingUser.get();
+            System.out.println("User details: " + user); // Debug log
             // Update display name if changed
             if (request.getDisplayName() != null && !request.getDisplayName().equals(user.getDisplayName())) {
+                System.out.println("Updating display name from " + user.getDisplayName() + " to " + request.getDisplayName()); // Debug log
                 user.setDisplayName(request.getDisplayName());
                 userRepository.save(user);
             }
             return ResponseEntity.ok(user);
         } else {
+            System.out.println("No existing user, registering new user."); // Debug log
             // Register new user
             User newUser = new User(request.getLineUserId(), request.getDisplayName(), UserRole.CUSTOMER);
             User savedUser = userRepository.save(newUser);
