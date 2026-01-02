@@ -19,13 +19,17 @@ public class Service {
 
     private BigDecimal price;
 
+    @Column(name = "is_price_starting_from", nullable = false)
+    private Boolean isPriceStartingFrom = false;
+
     public Service() {
     }
 
-    public Service(String name, Double durationHours, BigDecimal price) {
+    public Service(String name, Double durationHours, BigDecimal price, Boolean isPriceStartingFrom) {
         this.name = name;
         this.durationHours = durationHours;
         this.price = price;
+        this.isPriceStartingFrom = isPriceStartingFrom;
     }
 
     public Long getId() {
@@ -58,5 +62,13 @@ public class Service {
 
     public void setPrice(BigDecimal price) {
         this.price = price;
+    }
+
+    public Boolean getIsPriceStartingFrom() {
+        return isPriceStartingFrom;
+    }
+
+    public void setIsPriceStartingFrom(Boolean isPriceStartingFrom) {
+        this.isPriceStartingFrom = isPriceStartingFrom;
     }
 }

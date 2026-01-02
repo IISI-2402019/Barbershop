@@ -11,8 +11,12 @@ CREATE TABLE IF NOT EXISTS services (
     id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     duration_hours DOUBLE PRECISION,
-    price NUMERIC(38, 2)
+    price NUMERIC(38, 2),
+    is_price_starting_from BOOLEAN DEFAULT FALSE NOT NULL
 );
+
+-- 確保欄位存在 (針對舊資料表)
+ALTER TABLE services ADD COLUMN IF NOT EXISTS is_price_starting_from BOOLEAN DEFAULT FALSE NOT NULL;
 
 -- 如果資料表不存在，則建立 Users 表
 CREATE TABLE IF NOT EXISTS users (
@@ -36,3 +40,16 @@ CREATE TABLE IF NOT EXISTS appointments (
     status VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 如果資料表不存在，則建立 Schedules 表
+CREATE TABLE IF NOT EXISTS schedules (
+    id BIGSERIAL PRIMARY KEY,
+    stylist_id BIGINT REFERENCES stylists(id),
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
+    is_all_day BOOLEAN DEFAULT FALSE NOT NULL,
+    reason VARCHAR(255)
+);
+
+-- 修改 stylist_id 為可空 (針對舊資料表)
+ALTER TABLE schedules ALTER COLUMN stylist_id DROP NOT NULL;

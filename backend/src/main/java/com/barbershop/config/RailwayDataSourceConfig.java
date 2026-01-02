@@ -10,6 +10,7 @@ import javax.sql.DataSource;
 import java.net.URI;
 
 @Configuration
+@org.springframework.context.annotation.Profile("prod")
 public class RailwayDataSourceConfig {
 
     @Value("${DATABASE_URL:#{null}}")
@@ -45,16 +46,11 @@ public class RailwayDataSourceConfig {
                         .build();
             } catch (Exception e) {
                 System.err.println("Failed to parse DATABASE_URL: " + e.getMessage());
+                throw new RuntimeException("Failed to configure Railway DataSource", e);
             }
+        } else {
+            System.err.println("DATABASE_URL is missing in PROD profile!");
+            throw new RuntimeException("DATABASE_URL is required for production profile");
         }
-        
-        // Fallback for local development (H2)
-        System.out.println("Configuring Local H2 DataSource");
-        return DataSourceBuilder.create()
-                .url("jdbc:h2:mem:barbershopdb")
-                .driverClassName("org.h2.Driver")
-                .username("sa")
-                .password("password")
-                .build();
     }
 }

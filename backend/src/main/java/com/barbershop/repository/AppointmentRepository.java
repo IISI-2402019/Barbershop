@@ -18,4 +18,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     
     // 查詢某位設計師的所有預約 (用於排班表)
     List<Appointment> findByStylistIdOrderByStartTime(Long stylistId);
+
+    // 查詢特定時間範圍內的所有預約 (用於管理員行事曆與匯出)
+    List<Appointment> findByStartTimeBetweenOrderByStartTime(LocalDateTime start, LocalDateTime end);
 }

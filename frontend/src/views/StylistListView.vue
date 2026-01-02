@@ -1,6 +1,6 @@
 <template>
     <div class="stylist-list">
-        <h2>Select a Stylist</h2>
+        <h2>{{ $t('stylist.selectStylist') }}</h2>
         <el-row :gutter="20">
             <el-col :span="24" :md="12" v-for="stylist in stylists" :key="stylist.id" class="mb-4">
                 <el-card shadow="hover">
@@ -11,7 +11,7 @@
                             <h3>{{ stylist.name }}</h3>
                             <p>{{ stylist.specialty }}</p>
                         </div>
-                        <el-button type="primary" @click="selectStylist(stylist.id)">Book</el-button>
+                        <el-button type="primary" @click="selectStylist(stylist.id)">{{ $t('common.book') }}</el-button>
                     </div>
                 </el-card>
             </el-col>

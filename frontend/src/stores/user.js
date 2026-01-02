@@ -14,6 +14,10 @@ export const useUserStore = defineStore('user', () => {
         isLoggedIn.value = !!p
     }
 
+    const setDbUser = (u) => {
+        dbUser.value = u
+    }
+
     const loginToBackend = async () => {
         if (!profile.value) return
 
@@ -39,6 +43,7 @@ export const useUserStore = defineStore('user', () => {
         isLoggedIn,
         isLoading,
         setProfile,
+        setDbUser,
         loginToBackend
     }
 })

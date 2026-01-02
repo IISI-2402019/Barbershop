@@ -12,7 +12,7 @@ export const initLiff = async (liffId) => {
             // 如果是在外部瀏覽器且未登入，這裡保留自動登入邏輯
             // 注意：這會導致頁面重導向至 LINE 登入頁
             if (!liff.isInClient()) {
-                liff.login()
+                liff.login({ redirectUri: window.location.href })
                 return null // 登入重導向中，回傳 null
             }
             return null

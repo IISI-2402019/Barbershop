@@ -1,20 +1,22 @@
 <template>
     <div class="home">
-        <h1>Barbershop Appointment System</h1>
+        <h1>{{ $t('home.title') }}</h1>
 
         <div v-if="userStore.isLoggedIn" class="user-info">
-            <p>Welcome, {{ userStore.profile?.displayName }}</p>
+            <p>{{ $t('home.welcome', { name: userStore.profile?.displayName }) }}</p>
             <div class="actions">
-                <el-button type="primary" size="large" @click="$router.push('/stylists')">Book Now</el-button>
-                <el-button size="large" @click="$router.push('/my-appointments')">My Appointments</el-button>
+                <el-button type="primary" size="large" @click="$router.push('/stylists')">{{ $t('home.bookNow')
+                    }}</el-button>
+                <el-button size="large" @click="$router.push('/my-appointments')">{{ $t('home.myAppointments')
+                    }}</el-button>
                 <el-button v-if="userStore.dbUser?.role === 'ADMIN'" type="warning" size="large"
-                    @click="$router.push('/admin')">Admin Dashboard</el-button>
+                    @click="$router.push('/admin')">{{ $t('home.adminDashboard') }}</el-button>
             </div>
         </div>
 
         <div v-else class="login-prompt">
-            <p>Please login to book an appointment.</p>
-            <el-button type="success" size="large" @click="manualLogin">Login with LINE</el-button>
+            <p>{{ $t('home.loginPrompt') }}</p>
+            <el-button type="success" size="large" @click="manualLogin">{{ $t('home.loginWithLine') }}</el-button>
         </div>
     </div>
 </template>
@@ -27,7 +29,7 @@ const userStore = useUserStore()
 
 const manualLogin = () => {
     if (!liff.isLoggedIn()) {
-        liff.login()
+        liff.login({ redirectUri: window.location.href })
     }
 }
 </script>

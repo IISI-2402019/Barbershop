@@ -1,15 +1,22 @@
 <script setup>
 import { onMounted } from 'vue'
-import { RouterView } from 'vue-router'
+import { RouterView, useRouter } from 'vue-router'
 import { initLiff } from './utils/liff'
 import { useUserStore } from './stores/user'
 import { config } from './config'
+import { useI18n } from 'vue-i18n'
 
+const { locale } = useI18n()
+const router = useRouter()
 const userStore = useUserStore()
 // Fallback to hardcoded ID if env var is missing (common in some PaaS builds)
 const liffId = config.liffId
 
 console.log('Current LIFF ID:', liffId) // Debug log
+
+const toggleLanguage = () => {
+  locale.value = locale.value === 'zh-TW' ? 'en' : 'zh-TW'
+}
 
 onMounted(async () => {
   // Only init LIFF if ID is present
@@ -19,6 +26,11 @@ onMounted(async () => {
       if (profile) {
         userStore.setProfile(profile)
         await userStore.loginToBackend()
+
+        // Check if profile is complete
+        if (userStore.dbUser && (!userStore.dbUser.realName || !userStore.dbUser.phone)) {
+          router.push('/register')
+        }
       }
     } catch (e) {
       console.error('App LIFF init error:', e)
@@ -35,13 +47,25 @@ onMounted(async () => {
 </script>
 
 <template>
+  <div class="language-switcher">
+    <el-button size="small" @click="toggleLanguage">
+      {{ locale === 'zh-TW' ? 'English' : '繁體中文' }}
+    </el-button>
+  </div>
   <div v-if="userStore.isLoading" class="loading-overlay">
-    Loading...
+    {{ $t('common.loading') }}
   </div>
   <RouterView />
 </template>
 
 <style>
+.language-switcher {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+}
+
 .loading-overlay {
   position: fixed;
   top: 0;
