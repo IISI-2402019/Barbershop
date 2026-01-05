@@ -32,8 +32,14 @@ public class FileUploadController {
                 Files.createDirectories(uploadPath);
             }
 
-            // Generate unique filename
-            String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+            // Generate unique filename with UUID only (to avoid encoding issues with Chinese characters)
+            String originalFilename = file.getOriginalFilename();
+            String extension = "";
+            if (originalFilename != null && originalFilename.contains(".")) {
+                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
+            }
+            String fileName = UUID.randomUUID().toString() + extension;
+            
             Path path = uploadPath.resolve(fileName);
             Files.copy(file.getInputStream(), path);
 

@@ -48,7 +48,7 @@
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
                                 <el-button size="small" @click="openEditDialog(scope.row)">{{ $t('common.edit')
-                                }}</el-button>
+                                    }}</el-button>
                                 <el-button size="small" type="danger" @click="deleteStylist(scope.row.id)">{{
                                     $t('common.delete') }}</el-button>
                             </template>
@@ -60,9 +60,9 @@
                 <div class="schedule-management">
                     <div class="schedule-controls" style="margin-bottom: 20px;">
                         <el-button type="primary" @click="openAddScheduleDialog">{{ $t('admin.addSchedule')
-                        }}</el-button>
+                            }}</el-button>
                         <el-button type="danger" @click="openStoreClosedDialog">{{ $t('admin.storeClosed')
-                        }}</el-button>
+                            }}</el-button>
                     </div>
                     <FullCalendar ref="scheduleCalendarRef" :options="scheduleCalendarOptions" />
                 </div>
@@ -79,7 +79,7 @@
                         </el-form-item>
                         <el-form-item>
                             <el-checkbox v-model="newService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                                }}</el-checkbox>
+                            }}</el-checkbox>
                         </el-form-item>
                         <el-form-item :label="$t('admin.serviceDuration')">
                             <el-input-number v-model="newService.durationHours" :step="0.5" :min="0.5" />
@@ -104,7 +104,7 @@
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
                                 <el-button size="small" @click="openEditServiceDialog(scope.row)">{{ $t('common.edit')
-                                    }}</el-button>
+                                }}</el-button>
                                 <el-button size="small" type="danger" @click="deleteService(scope.row.id)">{{
                                     $t('common.delete') }}</el-button>
                             </template>
@@ -125,7 +125,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-checkbox v-model="editingService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                        }}</el-checkbox>
+                    }}</el-checkbox>
                 </el-form-item>
                 <el-form-item :label="$t('admin.serviceDuration')">
                     <el-input-number v-model="editingService.durationHours" :step="0.5" :min="0.5" />
@@ -188,7 +188,7 @@
         <el-dialog v-model="scheduleDetailVisible" :title="$t('admin.scheduleDetails')" width="400px">
             <div v-if="selectedSchedule">
                 <p><strong>{{ selectedSchedule.isStoreClosed ? $t('admin.storeClosed') : $t('admin.stylist')
-                        }}:</strong>
+                }}:</strong>
                     {{ selectedSchedule.isStoreClosed ? '' : selectedSchedule.stylistName }}
                 </p>
                 <p><strong>{{ $t('admin.dateRange') }}:</strong><br />
@@ -242,6 +242,7 @@
             </div>
             <template #footer>
                 <span class="dialog-footer">
+                    <el-button type="danger" @click="cancelAppointment">{{ $t('common.delete') }}</el-button>
                     <el-button @click="appointmentDetailVisible = false">{{ $t('common.close') }}</el-button>
                 </span>
             </template>
@@ -254,7 +255,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
 import { config } from '../config'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -394,13 +395,41 @@ const selectedAppointment = ref(null)
 const handleEventClick = (info) => {
     const props = info.event.extendedProps
     selectedAppointment.value = {
+        id: info.event.id,
         customerName: props.customerName,
         customerPhone: props.customerPhone,
         startTime: info.event.start,
         serviceName: props.serviceName,
-        stylistName: props.stylistName
+        stylistName: props.stylistName,
+        status: props.status
     }
     appointmentDetailVisible.value = true
+}
+
+const cancelAppointment = async () => {
+    if (!selectedAppointment.value) return
+
+    try {
+        await ElMessageBox.confirm(
+            t('admin.cancelAppointmentConfirm'),
+            t('common.warning'),
+            {
+                confirmButtonText: t('common.confirm'),
+                cancelButtonText: t('common.cancel'),
+                type: 'warning',
+            }
+        )
+
+        await axios.delete(`${config.apiBaseUrl}/api/appointments/${selectedAppointment.value.id}`)
+        ElMessage.success(t('admin.appointmentCancelled'))
+        appointmentDetailVisible.value = false
+        await fetchAppointments()
+    } catch (error) {
+        if (error !== 'cancel') {
+            console.error('Failed to cancel appointment', error)
+            ElMessage.error(t('common.error'))
+        }
+    }
 }
 
 const calendarOptions = ref({
@@ -475,12 +504,12 @@ onMounted(async () => {
 
 const getStylistColor = (stylistName) => {
     if (!stylistName) return '#F56C6C' // Red for store closed or unknown
+    const colors = ['#FF8F8F', '#FFF1CB', '#C2E2FA', '#B7A3E3']
     let hash = 0;
     for (let i = 0; i < stylistName.length; i++) {
         hash = stylistName.charCodeAt(i) + ((hash << 5) - hash);
     }
-    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-    return '#' + '00000'.substring(0, 6 - c.length) + c;
+    return colors[Math.abs(hash) % colors.length];
 }
 
 const fetchSchedules = async () => {
@@ -608,19 +637,24 @@ const fetchAppointments = async () => {
         const response = await axios.get(`${config.apiBaseUrl}/api/appointments`)
         appointments.value = response.data
 
-        const events = response.data.map(appt => ({
-            id: appt.id,
-            title: `${appt.customer.realName || appt.customer.displayName} - ${appt.service.name} (${appt.stylist.name})`,
-            start: appt.startTime,
-            end: appt.endTime,
-            backgroundColor: getStylistColor(appt.stylist.name),
-            extendedProps: {
-                customerName: appt.customer.realName || appt.customer.displayName,
-                customerPhone: appt.customer.phone,
-                serviceName: appt.service.name,
-                stylistName: appt.stylist.name
+        const events = response.data.map(appt => {
+            const isCancelled = appt.status === 'CANCELLED';
+            return {
+                id: appt.id,
+                title: `${isCancelled ? '[已取消] ' : ''}${appt.customer.realName || appt.customer.displayName} - ${appt.service.name} (${appt.stylist.name})`,
+                start: appt.startTime,
+                end: appt.endTime,
+                backgroundColor: isCancelled ? '#909399' : getStylistColor(appt.stylist.name),
+                borderColor: isCancelled ? '#909399' : getStylistColor(appt.stylist.name),
+                extendedProps: {
+                    customerName: appt.customer.realName || appt.customer.displayName,
+                    customerPhone: appt.customer.phone,
+                    serviceName: appt.service.name,
+                    stylistName: appt.stylist.name,
+                    status: appt.status
+                }
             }
-        }))
+        })
         calendarOptions.value.events = events
     } catch (error) {
         console.error('Failed to fetch appointments', error)

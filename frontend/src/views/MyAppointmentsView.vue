@@ -12,7 +12,7 @@
             </template>
             <p><strong>{{ $t('booking.stylist') }}:</strong> {{ appt.stylist.name }}</p>
             <p><strong>{{ $t('booking.service') }}:</strong> {{ appt.service.name }}</p>
-            <div class="actions" style="margin-top: 10px; text-align: right;">
+            <div class="actions" style="margin-top: 10px; text-align: right;" v-if="appt.status === 'BOOKED'">
                 <el-button size="small" @click="handleEdit(appt)">{{ $t('common.edit') }}</el-button>
                 <el-button size="small" type="danger" @click="handleDelete(appt)">{{ $t('common.cancel') }}</el-button>
             </div>
@@ -43,7 +43,7 @@
                     <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
                     <el-button type="primary" @click="confirmUpdate" :disabled="!newTime || !newServiceId">{{
                         $t('common.confirm')
-                        }}</el-button>
+                    }}</el-button>
                 </span>
             </template>
         </el-dialog>

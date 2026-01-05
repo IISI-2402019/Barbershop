@@ -86,6 +86,10 @@ public class AppointmentController {
 
             // 1. Check Appointments (In-Memory)
             for (Appointment appt : dayAppointments) {
+                // Skip CANCELLED appointments
+                if (appt.getStatus() == AppointmentStatus.CANCELLED) {
+                    continue;
+                }
                 if (appt.getStartTime().isBefore(slotEnd) && appt.getEndTime().isAfter(slotStart)) {
                     hasConflict = true;
                     break;
@@ -141,6 +145,9 @@ public class AppointmentController {
         // 5. Check Availability (Appointments overlap)
         List<Appointment> conflicts = appointmentRepository.findOverlappingAppointments(
                 stylist.getId(), start, end);
+        
+        // Filter out CANCELLED appointments
+        conflicts.removeIf(a -> a.getStatus() == AppointmentStatus.CANCELLED);
 
         if (!conflicts.isEmpty()) {
             return ResponseEntity.badRequest().body("該時段已被預約，請再次選擇");
@@ -175,10 +182,12 @@ public class AppointmentController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAppointment(@PathVariable Long id) {
-        if (!appointmentRepository.existsById(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        appointmentRepository.deleteById(id);
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+        
+        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointmentRepository.save(appointment);
+        
         return ResponseEntity.ok().build();
     }
 
