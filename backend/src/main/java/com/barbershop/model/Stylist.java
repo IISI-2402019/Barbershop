@@ -13,16 +13,13 @@ public class Stylist {
     @Column(nullable = false)
     private String name;
 
-    private String specialty;
-
     private String avatarUrl;
 
     public Stylist() {
     }
 
-    public Stylist(String name, String specialty, String avatarUrl) {
+    public Stylist(String name, String avatarUrl) {
         this.name = name;
-        this.specialty = specialty;
         this.avatarUrl = avatarUrl;
     }
 
@@ -40,14 +37,6 @@ public class Stylist {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getSpecialty() {
-        return specialty;
-    }
-
-    public void setSpecialty(String specialty) {
-        this.specialty = specialty;
     }
 
     public String getAvatarUrl() {

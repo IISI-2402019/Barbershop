@@ -9,7 +9,7 @@
                         style="margin-right: 10px;" />
                     <el-button type="success" @click="exportExcel">{{ $t('admin.exportExcel') }}</el-button>
                 </div>
-                <FullCalendar :options="calendarOptions" />
+                <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.stylists')" name="stylists">
                 <div class="stylist-management">
@@ -48,7 +48,7 @@
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
                                 <el-button size="small" @click="openEditDialog(scope.row)">{{ $t('common.edit')
-                                    }}</el-button>
+                                }}</el-button>
                                 <el-button size="small" type="danger" @click="deleteStylist(scope.row.id)">{{
                                     $t('common.delete') }}</el-button>
                             </template>
@@ -60,11 +60,11 @@
                 <div class="schedule-management">
                     <div class="schedule-controls" style="margin-bottom: 20px;">
                         <el-button type="primary" @click="openAddScheduleDialog">{{ $t('admin.addSchedule')
-                            }}</el-button>
+                        }}</el-button>
                         <el-button type="danger" @click="openStoreClosedDialog">{{ $t('admin.storeClosed')
-                            }}</el-button>
+                        }}</el-button>
                     </div>
-                    <FullCalendar :options="scheduleCalendarOptions" />
+                    <FullCalendar ref="scheduleCalendarRef" :options="scheduleCalendarOptions" />
                 </div>
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.services')" name="services">
@@ -79,7 +79,7 @@
                         </el-form-item>
                         <el-form-item>
                             <el-checkbox v-model="newService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                            }}</el-checkbox>
+                                }}</el-checkbox>
                         </el-form-item>
                         <el-form-item :label="$t('admin.serviceDuration')">
                             <el-input-number v-model="newService.durationHours" :step="0.5" :min="0.5" />
@@ -104,7 +104,7 @@
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
                                 <el-button size="small" @click="openEditServiceDialog(scope.row)">{{ $t('common.edit')
-                                }}</el-button>
+                                    }}</el-button>
                                 <el-button size="small" type="danger" @click="deleteService(scope.row.id)">{{
                                     $t('common.delete') }}</el-button>
                             </template>
@@ -125,7 +125,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-checkbox v-model="editingService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                    }}</el-checkbox>
+                        }}</el-checkbox>
                 </el-form-item>
                 <el-form-item :label="$t('admin.serviceDuration')">
                     <el-input-number v-model="editingService.durationHours" :step="0.5" :min="0.5" />
@@ -160,7 +160,8 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="addScheduleDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="addSchedule">{{ $t('common.add') }}</el-button>
+                    <el-button type="primary" @click="addSchedule">{{ isEditingSchedule ? $t('common.save') :
+                        $t('common.add') }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -177,7 +178,29 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="storeClosedDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="addStoreClosedSchedule">{{ $t('common.add') }}</el-button>
+                    <el-button type="primary" @click="addStoreClosedSchedule">{{ isEditingSchedule ? $t('common.save') :
+                        $t('common.add') }}</el-button>
+                </span>
+            </template>
+        </el-dialog>
+
+        <!-- Schedule Detail Dialog -->
+        <el-dialog v-model="scheduleDetailVisible" :title="$t('admin.scheduleDetails')" width="400px">
+            <div v-if="selectedSchedule">
+                <p><strong>{{ selectedSchedule.isStoreClosed ? $t('admin.storeClosed') : $t('admin.stylist')
+                        }}:</strong>
+                    {{ selectedSchedule.isStoreClosed ? '' : selectedSchedule.stylistName }}
+                </p>
+                <p><strong>{{ $t('admin.dateRange') }}:</strong><br />
+                    {{ formatTime(selectedSchedule.start) }} - {{ formatTime(selectedSchedule.end) }}
+                </p>
+                <p><strong>{{ $t('admin.reason') }}:</strong> {{ selectedSchedule.reason || $t('admin.leave') }}</p>
+            </div>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button type="primary" @click="openEditSchedule">{{ $t('common.edit') }}</el-button>
+                    <el-button type="danger" @click="deleteSchedule">{{ $t('common.delete') }}</el-button>
+                    <el-button @click="scheduleDetailVisible = false">{{ $t('common.close') }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -215,6 +238,7 @@
                 <p><strong>{{ $t('admin.appointmentTime') }}:</strong> {{ formatTime(selectedAppointment.startTime) }}
                 </p>
                 <p><strong>{{ $t('admin.serviceName') }}:</strong> {{ selectedAppointment.serviceName }}</p>
+                <p><strong>{{ $t('admin.stylist') }}:</strong> {{ selectedAppointment.stylistName }}</p>
             </div>
             <template #footer>
                 <span class="dialog-footer">
@@ -226,7 +250,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/user'
 import { config } from '../config'
@@ -242,6 +266,23 @@ const { t } = useI18n()
 
 const userStore = useUserStore()
 const activeTab = ref('appointments')
+const scheduleCalendarRef = ref(null)
+const appointmentCalendarRef = ref(null)
+
+watch(activeTab, async (newTab) => {
+    if (newTab === 'schedule') {
+        await nextTick()
+        if (scheduleCalendarRef.value) {
+            scheduleCalendarRef.value.getApi().updateSize()
+        }
+    } else if (newTab === 'appointments') {
+        await nextTick()
+        if (appointmentCalendarRef.value) {
+            appointmentCalendarRef.value.getApi().updateSize()
+        }
+    }
+})
+
 const appointments = ref([])
 const stylists = ref([])
 const services = ref([])
@@ -265,16 +306,67 @@ const storeClosedSchedule = ref({
 })
 const schedules = ref([])
 
-const handleScheduleEventClick = async (info) => {
+// Schedule Detail State
+const scheduleDetailVisible = ref(false)
+const selectedSchedule = ref(null)
+const isEditingSchedule = ref(false)
+const editingScheduleId = ref(null)
+
+const handleScheduleEventClick = (info) => {
+    const props = info.event.extendedProps
+    selectedSchedule.value = {
+        id: info.event.id,
+        title: info.event.title,
+        start: info.event.start,
+        end: info.event.end,
+        allDay: info.event.allDay,
+        stylistId: props.stylistId,
+        stylistName: props.stylistName,
+        reason: props.reason,
+        isStoreClosed: !props.stylistId
+    }
+    scheduleDetailVisible.value = true
+}
+
+const deleteSchedule = async () => {
+    if (!selectedSchedule.value) return
     if (confirm(t('admin.deleteScheduleConfirm'))) {
         try {
-            await axios.delete(`${config.apiBaseUrl}/api/schedules/${info.event.id}`)
+            await axios.delete(`${config.apiBaseUrl}/api/schedules/${selectedSchedule.value.id}`)
             ElMessage.success(t('admin.scheduleDeleted'))
+            scheduleDetailVisible.value = false
             await fetchSchedules()
         } catch (error) {
             console.error('Failed to delete schedule', error)
             ElMessage.error(t('common.error'))
         }
+    }
+}
+
+const openEditSchedule = () => {
+    scheduleDetailVisible.value = false
+    isEditingSchedule.value = true
+    editingScheduleId.value = selectedSchedule.value.id
+
+    // Fix date range for picker (needs Date objects)
+    const start = new Date(selectedSchedule.value.start)
+    const end = new Date(selectedSchedule.value.end)
+
+    if (selectedSchedule.value.isStoreClosed) {
+        storeClosedSchedule.value = {
+            dateRange: [start, end],
+            isAllDay: selectedSchedule.value.allDay,
+            reason: selectedSchedule.value.reason
+        }
+        storeClosedDialogVisible.value = true
+    } else {
+        newSchedule.value = {
+            stylistId: selectedSchedule.value.stylistId,
+            dateRange: [start, end],
+            isAllDay: selectedSchedule.value.allDay,
+            reason: selectedSchedule.value.reason
+        }
+        addScheduleDialogVisible.value = true
     }
 }
 
@@ -287,9 +379,12 @@ const scheduleCalendarOptions = ref({
         right: 'dayGridMonth,timeGridWeek'
     },
     events: [],
-    height: 'auto',
     eventClick: handleScheduleEventClick,
-    eventColor: '#E6A23C' // Default color
+    eventColor: '#E6A23C', // Default color
+    displayEventTime: false, // Hide time prefix like 12a
+    slotMinTime: config.businessStartTime,
+    slotMaxTime: config.businessEndTime,
+    height: 'auto'
 })
 
 // Appointment Detail State
@@ -302,7 +397,8 @@ const handleEventClick = (info) => {
         customerName: props.customerName,
         customerPhone: props.customerPhone,
         startTime: info.event.start,
-        serviceName: props.serviceName
+        serviceName: props.serviceName,
+        stylistName: props.stylistName
     }
     appointmentDetailVisible.value = true
 }
@@ -316,11 +412,11 @@ const calendarOptions = ref({
         right: 'dayGridMonth,timeGridWeek'
     },
     events: [],
-    height: 'auto',
-    slotMinTime: '09:00:00',
-    slotMaxTime: '22:00:00',
+    slotMinTime: config.businessStartTime,
+    slotMaxTime: config.businessEndTime,
     allDaySlot: false,
-    eventClick: handleEventClick
+    eventClick: handleEventClick,
+    height: 'auto'
 })
 
 const newStylist = ref({
@@ -377,6 +473,16 @@ onMounted(async () => {
     }
 })
 
+const getStylistColor = (stylistName) => {
+    if (!stylistName) return '#F56C6C' // Red for store closed or unknown
+    let hash = 0;
+    for (let i = 0; i < stylistName.length; i++) {
+        hash = stylistName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+    return '#' + '00000'.substring(0, 6 - c.length) + c;
+}
+
 const fetchSchedules = async () => {
     try {
         const response = await axios.get(`${config.apiBaseUrl}/api/schedules`)
@@ -388,7 +494,12 @@ const fetchSchedules = async () => {
             start: sch.startTime,
             end: sch.endTime,
             allDay: sch.isAllDay,
-            color: sch.stylist ? '#E6A23C' : '#F56C6C' // Orange for stylist, Red for store closed
+            color: sch.stylist ? getStylistColor(sch.stylist.name) : '#F56C6C', // Dynamic color for stylist, Red for store closed
+            extendedProps: {
+                stylistId: sch.stylist ? sch.stylist.id : null,
+                stylistName: sch.stylist ? sch.stylist.name : null,
+                reason: sch.reason
+            }
         }))
         scheduleCalendarOptions.value.events = events
     } catch (error) {
@@ -397,6 +508,8 @@ const fetchSchedules = async () => {
 }
 
 const openAddScheduleDialog = () => {
+    isEditingSchedule.value = false
+    editingScheduleId.value = null
     newSchedule.value = {
         stylistId: null,
         dateRange: [],
@@ -407,6 +520,8 @@ const openAddScheduleDialog = () => {
 }
 
 const openStoreClosedDialog = () => {
+    isEditingSchedule.value = false
+    editingScheduleId.value = null
     storeClosedSchedule.value = {
         dateRange: [],
         isAllDay: false,
@@ -430,18 +545,26 @@ const addStoreClosedSchedule = async () => {
     let end = storeClosedSchedule.value.dateRange[1]
 
     try {
-        await axios.post(`${config.apiBaseUrl}/api/schedules`, {
+        const payload = {
             stylistId: null, // Null means Global/Store Closed
             startTime: toLocalISOString(start),
             endTime: toLocalISOString(end),
             isAllDay: false,
             reason: t('admin.storeClosedDefaultReason')
-        })
-        ElMessage.success(t('admin.storeClosedAdded'))
+        }
+
+        if (isEditingSchedule.value) {
+            await axios.put(`${config.apiBaseUrl}/api/schedules/${editingScheduleId.value}`, payload)
+            ElMessage.success(t('admin.scheduleUpdated'))
+        } else {
+            await axios.post(`${config.apiBaseUrl}/api/schedules`, payload)
+            ElMessage.success(t('admin.storeClosedAdded'))
+        }
+
         storeClosedDialogVisible.value = false
         await fetchSchedules()
     } catch (error) {
-        console.error('Failed to add store closed schedule', error)
+        console.error('Failed to save store closed schedule', error)
         ElMessage.error(t('common.error'))
     }
 }
@@ -456,18 +579,26 @@ const addSchedule = async () => {
     let end = newSchedule.value.dateRange[1]
 
     try {
-        await axios.post(`${config.apiBaseUrl}/api/schedules`, {
+        const payload = {
             stylistId: newSchedule.value.stylistId,
             startTime: toLocalISOString(start),
             endTime: toLocalISOString(end),
             isAllDay: false,
             reason: newSchedule.value.reason
-        })
-        ElMessage.success(t('admin.scheduleAdded'))
+        }
+
+        if (isEditingSchedule.value) {
+            await axios.put(`${config.apiBaseUrl}/api/schedules/${editingScheduleId.value}`, payload)
+            ElMessage.success(t('admin.scheduleUpdated'))
+        } else {
+            await axios.post(`${config.apiBaseUrl}/api/schedules`, payload)
+            ElMessage.success(t('admin.scheduleAdded'))
+        }
+
         addScheduleDialogVisible.value = false
         await fetchSchedules()
     } catch (error) {
-        console.error('Failed to add schedule', error)
+        console.error('Failed to save schedule', error)
         ElMessage.error(t('common.error'))
     }
 }
@@ -479,14 +610,15 @@ const fetchAppointments = async () => {
 
         const events = response.data.map(appt => ({
             id: appt.id,
-            title: `${appt.customer.realName || appt.customer.displayName} - ${appt.service.name}`,
+            title: `${appt.customer.realName || appt.customer.displayName} - ${appt.service.name} (${appt.stylist.name})`,
             start: appt.startTime,
             end: appt.endTime,
-            backgroundColor: getStatusColor(appt.status),
+            backgroundColor: getStylistColor(appt.stylist.name),
             extendedProps: {
                 customerName: appt.customer.realName || appt.customer.displayName,
                 customerPhone: appt.customer.phone,
-                serviceName: appt.service.name
+                serviceName: appt.service.name,
+                stylistName: appt.stylist.name
             }
         }))
         calendarOptions.value.events = events
@@ -646,8 +778,7 @@ const addStylist = async () => {
     try {
         await axios.post(`${config.apiBaseUrl}/api/stylists`, {
             name: newStylist.value.name,
-            avatarUrl: newStylist.value.avatarUrl, // Can be empty
-            specialty: 'All-Rounder' // Default value
+            avatarUrl: newStylist.value.avatarUrl // Can be empty
         })
         ElMessage.success(t('admin.stylistAdded'))
         newStylist.value = { name: '', avatarUrl: '' }
@@ -671,8 +802,7 @@ const updateStylist = async () => {
     try {
         await axios.put(`${config.apiBaseUrl}/api/stylists/${editingStylist.value.id}`, {
             name: editingStylist.value.name,
-            avatarUrl: editingStylist.value.avatarUrl,
-            specialty: 'All-Rounder'
+            avatarUrl: editingStylist.value.avatarUrl
         })
         ElMessage.success(t('admin.stylistUpdated'))
         editDialogVisible.value = false

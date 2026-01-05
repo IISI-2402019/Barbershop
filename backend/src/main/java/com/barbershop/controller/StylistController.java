@@ -40,8 +40,6 @@ public class StylistController {
                     if (stylistDetails.getAvatarUrl() != null) {
                         stylist.setAvatarUrl(stylistDetails.getAvatarUrl());
                     }
-                    // Keep specialty as is or update if provided, but user requirement says specialty is fixed/hidden
-                    // stylist.setSpecialty(stylistDetails.getSpecialty()); 
                     
                     Stylist updatedStylist = stylistRepository.save(stylist);
                     return new ResponseEntity<>(updatedStylist, HttpStatus.OK);

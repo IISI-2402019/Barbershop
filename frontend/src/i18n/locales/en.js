@@ -120,7 +120,9 @@ export default {
         fillAllFields: 'Please fill all required fields',
         storeClosed: 'Store Closed',
         storeClosedDefaultReason: 'Store Closed',
-        storeClosedAdded: 'Store Closed schedule added'
+        storeClosedAdded: 'Store Closed schedule added',
+        scheduleDetails: 'Schedule Details',
+        scheduleUpdated: 'Schedule updated'
     },
     register: {
         title: 'Complete Profile',

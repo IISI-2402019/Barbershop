@@ -49,6 +49,25 @@ public class ScheduleController {
         return ResponseEntity.ok(scheduleRepository.save(schedule));
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateSchedule(@PathVariable Long id, @RequestBody ScheduleRequest request) {
+        return scheduleRepository.findById(id)
+                .map(schedule -> {
+                    Stylist stylist = null;
+                    if (request.getStylistId() != null) {
+                        stylist = stylistRepository.findById(request.getStylistId())
+                                .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                    }
+                    schedule.setStylist(stylist);
+                    schedule.setStartTime(request.getStartTime());
+                    schedule.setEndTime(request.getEndTime());
+                    schedule.setIsAllDay(request.getIsAllDay());
+                    schedule.setReason(request.getReason());
+                    return ResponseEntity.ok(scheduleRepository.save(schedule));
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteSchedule(@PathVariable Long id) {
         if (!scheduleRepository.existsById(id)) {

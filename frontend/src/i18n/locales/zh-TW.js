@@ -120,7 +120,9 @@ export default {
         fillAllFields: '請填寫所有必填欄位',
         storeClosed: '店休',
         storeClosedDefaultReason: '店休',
-        storeClosedAdded: '店休已新增'
+        storeClosedAdded: '店休已新增',
+        scheduleDetails: '排班詳情',
+        scheduleUpdated: '排班已更新'
     },
     register: {
         title: '完善個人資料',

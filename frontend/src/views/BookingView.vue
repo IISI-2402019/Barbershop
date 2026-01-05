@@ -4,31 +4,36 @@
 
         <el-form :model="form" label-width="120px" label-position="top">
 
-            <!-- Stylist Info (Read-only or Selectable if not passed) -->
+            <!-- Stylist Info -->
             <el-form-item :label="$t('booking.stylist')">
-                <el-select v-model="form.stylistId" :placeholder="$t('booking.selectStylist')" disabled>
+                <el-select v-model="form.stylistId" :placeholder="$t('booking.selectStylist')"
+                    @change="handleStylistChange">
                     <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
                 </el-select>
             </el-form-item>
 
             <!-- Service Selection -->
             <el-form-item :label="$t('booking.service')">
-                <el-select v-model="form.serviceId" :placeholder="$t('booking.selectService')" @change="updateDuration">
+                <el-select v-model="form.serviceId" :placeholder="$t('booking.selectService')"
+                    :disabled="!form.stylistId" @change="handleServiceChange">
                     <el-option v-for="service in services" :key="service.id"
-                        :label="service.name + ' (' + service.duration + 'h)'" :value="service.id" />
+                        :label="service.name + ' (' + service.durationHours + 'h)'" :value="service.id" />
                 </el-select>
             </el-form-item>
 
             <!-- Date Selection -->
             <el-form-item :label="$t('booking.date')">
                 <el-date-picker v-model="form.date" type="date" :placeholder="$t('booking.selectDate')"
-                    :disabled-date="disabledDate" format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
+                    :disabled="!form.serviceId" :disabled-date="disabledDate" format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD" @change="handleDateChange" />
             </el-form-item>
 
             <!-- Time Selection -->
             <el-form-item :label="$t('booking.time')">
-                <el-time-select v-model="form.time" start="11:00" step="00:30" end="21:00"
-                    :placeholder="$t('booking.selectTime')" />
+                <el-select v-model="form.time" :placeholder="$t('booking.selectTime')"
+                    :disabled="!form.date || availableSlots.length === 0" v-loading="loadingSlots">
+                    <el-option v-for="slot in availableSlots" :key="slot" :label="slot" :value="slot" />
+                </el-select>
             </el-form-item>
 
             <el-form-item>
@@ -55,6 +60,8 @@ const userStore = useUserStore()
 
 const stylists = ref([])
 const services = ref([])
+const availableSlots = ref([])
+const loadingSlots = ref(false)
 
 const form = ref({
     stylistId: null,
@@ -89,8 +96,43 @@ const disabledDate = (time) => {
     return time.getTime() < Date.now() - 8.64e7
 }
 
-const updateDuration = () => {
-    // Logic to calculate end time could go here
+const handleStylistChange = () => {
+    form.value.serviceId = null
+    form.value.date = ''
+    form.value.time = ''
+    availableSlots.value = []
+}
+
+const handleServiceChange = () => {
+    form.value.date = ''
+    form.value.time = ''
+    availableSlots.value = []
+}
+
+const handleDateChange = () => {
+    form.value.time = ''
+    fetchAvailableSlots()
+}
+
+const fetchAvailableSlots = async () => {
+    if (!form.value.stylistId || !form.value.serviceId || !form.value.date) return
+
+    loadingSlots.value = true
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/appointments/available-slots`, {
+            params: {
+                stylistId: form.value.stylistId,
+                date: form.value.date,
+                serviceId: form.value.serviceId
+            }
+        })
+        availableSlots.value = res.data
+    } catch (e) {
+        console.error('Failed to fetch slots', e)
+        ElMessage.error(t('common.error'))
+    } finally {
+        loadingSlots.value = false
+    }
 }
 
 const submitBooking = async () => {
@@ -122,7 +164,15 @@ const submitBooking = async () => {
         }, 1500)
     } catch (error) {
         console.error(error)
-        ElMessage.error(error.response?.data || t('common.error'))
+        if (error.response && error.response.status === 400 && error.response.data === "該時段已被預約，請再次選擇") {
+            ElMessage.error(error.response.data)
+            // Clear selected time
+            form.value.time = ''
+            // Reload available slots
+            fetchAvailableSlots()
+        } else {
+            ElMessage.error(error.response?.data || t('common.error'))
+        }
     }
 }
 </script>

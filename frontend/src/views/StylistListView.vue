@@ -6,10 +6,9 @@
                 <el-card shadow="hover">
                     <div class="stylist-card-content">
                         <el-avatar :size="64"
-                            :src="stylist.avatar || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" />
+                            :src="getFullImageUrl(stylist.avatarUrl) || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" />
                         <div class="info">
                             <h3>{{ stylist.name }}</h3>
-                            <p>{{ stylist.specialty }}</p>
                         </div>
                         <el-button type="primary" @click="selectStylist(stylist.id)">{{ $t('common.book') }}</el-button>
                     </div>
@@ -27,6 +26,12 @@ import { config } from '../config'
 
 const router = useRouter()
 const stylists = ref([])
+
+const getFullImageUrl = (url) => {
+    if (!url) return ''
+    if (url.startsWith('http')) return url
+    return `${config.apiBaseUrl}${url}`
+}
 
 onMounted(async () => {
     try {

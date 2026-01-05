@@ -22,6 +22,12 @@
         <el-dialog v-model="editDialogVisible" :title="$t('appointments.reschedule')">
             <p>{{ $t('appointments.current') }}: {{ formatTime(editingAppt?.startTime) }}</p>
             <el-form>
+                <el-form-item :label="$t('booking.service')">
+                    <el-select v-model="newServiceId" :placeholder="$t('booking.selectService')">
+                        <el-option v-for="service in services" :key="service.id"
+                            :label="service.name + ' (' + service.durationHours + 'h)'" :value="service.id" />
+                    </el-select>
+                </el-form-item>
                 <el-form-item :label="$t('appointments.newDate')">
                     <el-date-picker v-model="newDate" type="date" :placeholder="$t('booking.selectDate')"
                         :disabled-date="disabledDate" @change="fetchSlots" />
@@ -35,7 +41,8 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="confirmUpdate" :disabled="!newTime">{{ $t('common.confirm')
+                    <el-button type="primary" @click="confirmUpdate" :disabled="!newTime || !newServiceId">{{
+                        $t('common.confirm')
                         }}</el-button>
                 </span>
             </template>
@@ -54,6 +61,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 const userStore = useUserStore()
 const appointments = ref([])
+const services = ref([])
 const loading = ref(true)
 
 // Edit State
@@ -61,13 +69,24 @@ const editDialogVisible = ref(false)
 const editingAppt = ref(null)
 const newDate = ref('')
 const newTime = ref('')
+const newServiceId = ref(null)
 const availableSlots = ref([])
 
 onMounted(async () => {
     if (userStore.dbUser) {
         await fetchAppointments()
+        await fetchServices()
     }
 })
+
+const fetchServices = async () => {
+    try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/services`)
+        services.value = response.data
+    } catch (error) {
+        console.error('Failed to fetch services', error)
+    }
+}
 
 const fetchAppointments = async () => {
     try {
@@ -101,6 +120,7 @@ const handleEdit = (appt) => {
     editingAppt.value = appt
     newDate.value = ''
     newTime.value = ''
+    newServiceId.value = appt.service.id
     availableSlots.value = []
     editDialogVisible.value = true
 }
@@ -136,6 +156,11 @@ const disabledDate = (time) => {
     return time.getTime() < Date.now()
 }
 
+const toLocalISOString = (date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000
+    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10)
+}
+
 const fetchSlots = async () => {
     if (!newDate.value || !editingAppt.value) return
 
@@ -157,16 +182,16 @@ const fetchSlots = async () => {
 }
 
 const confirmUpdate = async () => {
-    if (!newDate.value || !newTime.value) return
+    if (!newDate.value || !newTime.value || !newServiceId.value) return
 
-    const dateStr = newDate.value.toISOString().split('T')[0]
+    const dateStr = toLocalISOString(newDate.value)
     const dateTimeStr = `${dateStr}T${newTime.value}:00`
 
     try {
         await axios.put(`${config.apiBaseUrl}/api/appointments/${editingAppt.value.id}`, {
             userId: userStore.dbUser.id,
             stylistId: editingAppt.value.stylist.id,
-            serviceId: editingAppt.value.service.id,
+            serviceId: newServiceId.value,
             startTime: dateTimeStr
         })
         ElMessage.success(t('common.success'))
@@ -188,7 +213,15 @@ const getStatusType = (status) => {
 }
 
 const formatTime = (timeStr) => {
-    return new Date(timeStr).toLocaleString()
+    const date = new Date(timeStr)
+    return date.toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    })
 }
 </script>
 
