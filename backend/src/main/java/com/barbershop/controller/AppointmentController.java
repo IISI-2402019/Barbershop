@@ -276,9 +276,9 @@ public class AppointmentController {
                 row.createCell(5).setCellValue(""); // Remarks (Empty)
             }
 
-            // Autosize columns
+            // Set fixed column width to avoid AWT dependency (libfreetype missing on Linux)
             for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
+                sheet.setColumnWidth(i, 20 * 256); // 20 characters width
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
