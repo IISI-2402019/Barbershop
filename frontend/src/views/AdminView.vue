@@ -47,10 +47,12 @@
                         </el-table-column>
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
-                                <el-button size="small" @click="openEditDialog(scope.row)">{{ $t('common.edit')
-                                    }}</el-button>
-                                <el-button size="small" type="danger" @click="deleteStylist(scope.row.id)">{{
-                                    $t('common.delete') }}</el-button>
+                                <div class="action-buttons">
+                                    <el-button size="small" @click="openEditDialog(scope.row)">{{ $t('common.edit')
+                                        }}</el-button>
+                                    <el-button size="small" type="danger" @click="deleteStylist(scope.row.id)">{{
+                                        $t('common.delete') }}</el-button>
+                                </div>
                             </template>
                         </el-table-column>
                     </el-table>
@@ -103,10 +105,36 @@
                         <el-table-column prop="durationHours" :label="$t('admin.serviceDuration')" />
                         <el-table-column :label="$t('admin.actions')">
                             <template #default="scope">
-                                <el-button size="small" @click="openEditServiceDialog(scope.row)">{{ $t('common.edit')
-                                }}</el-button>
-                                <el-button size="small" type="danger" @click="deleteService(scope.row.id)">{{
-                                    $t('common.delete') }}</el-button>
+                                <div class="action-buttons">
+                                    <el-button size="small" @click="openEditServiceDialog(scope.row)">{{
+                                        $t('common.edit')
+                                    }}</el-button>
+                                    <el-button size="small" type="danger" @click="deleteService(scope.row.id)">{{
+                                        $t('common.delete') }}</el-button>
+                                </div>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('admin.users')" name="users">
+                <div class="user-management">
+                    <div style="margin-bottom: 20px;">
+                        <el-input v-model="userSearchQuery" :placeholder="$t('admin.searchUser')"
+                            style="width: 250px; margin-right: 10px;" @keyup.enter="fetchUsers" clearable />
+                        <el-button type="primary" @click="fetchUsers">{{ $t('common.search') }}</el-button>
+                    </div>
+
+                    <el-table :data="userList" style="width: 100%" v-loading="loadingUsers">
+                        <el-table-column prop="realName" :label="$t('register.name')" />
+                        <el-table-column prop="phone" :label="$t('register.phone')" />
+                        <el-table-column :label="$t('admin.role')">
+                            <template #default="scope">
+                                <el-select v-model="scope.row.role" @change="updateUserRole(scope.row)"
+                                    style="width: 140px;">
+                                    <el-option :label="$t('admin.customer')" value="CUSTOMER" />
+                                    <el-option :label="$t('admin.admin')" value="ADMIN" />
+                                </el-select>
                             </template>
                         </el-table-column>
                     </el-table>
@@ -242,7 +270,10 @@
             </div>
             <template #footer>
                 <span class="dialog-footer">
-                    <el-button type="danger" @click="cancelAppointment">{{ $t('common.delete') }}</el-button>
+                    <el-button type="danger" @click="cancelAppointment"
+                        :disabled="selectedAppointment?.status === 'CANCELED'">
+                        {{ $t('common.cancel') }}
+                    </el-button>
                     <el-button @click="appointmentDetailVisible = false">{{ $t('common.close') }}</el-button>
                 </span>
             </template>
@@ -290,6 +321,9 @@ const services = ref([])
 const searchQuery = ref('')
 const serviceSearchQuery = ref('')
 const exportDateRange = ref([])
+const userSearchQuery = ref('')
+const userList = ref([])
+const loadingUsers = ref(false)
 
 // Schedule State
 const addScheduleDialogVisible = ref(false)
@@ -421,7 +455,7 @@ const cancelAppointment = async () => {
         )
 
         await axios.delete(`${config.apiBaseUrl}/api/appointments/${selectedAppointment.value.id}`)
-        ElMessage.success(t('admin.appointmentCancelled'))
+        ElMessage.success(t('admin.appointmentCanceled'))
         appointmentDetailVisible.value = false
         await fetchAppointments()
     } catch (error) {
@@ -493,12 +527,43 @@ const filteredServices = computed(() => {
     )
 })
 
+
+const fetchUsers = async () => {
+    loadingUsers.value = true
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/users`, {
+            params: { query: userSearchQuery.value }
+        })
+        userList.value = res.data
+    } catch (e) {
+        console.error(e)
+        ElMessage.error(t('common.error'))
+    } finally {
+        loadingUsers.value = false
+    }
+}
+
+const updateUserRole = async (user) => {
+    try {
+        await axios.put(`${config.apiBaseUrl}/api/users/${user.id}/role`, {
+            role: user.role
+        })
+        ElMessage.success(t('admin.roleUpdated'))
+    } catch (e) {
+        console.error(e)
+        ElMessage.error(t('common.error'))
+        // Refresh list to revert change if failed
+        fetchUsers()
+    }
+}
+
 onMounted(async () => {
     if (userStore.dbUser?.role === 'ADMIN') {
         await fetchAppointments()
         await fetchStylists()
         await fetchServices()
         await fetchSchedules()
+        await fetchUsers()
     }
 })
 
@@ -638,7 +703,7 @@ const fetchAppointments = async () => {
         appointments.value = response.data
 
         const events = response.data.map(appt => {
-            const isCancelled = appt.status === 'CANCELLED';
+            const isCancelled = appt.status === 'CANCELED';
             return {
                 id: appt.id,
                 title: `${isCancelled ? '[已取消] ' : ''}${appt.customer.realName || appt.customer.displayName} - ${appt.service.name} (${appt.stylist.name})`,
@@ -664,7 +729,7 @@ const fetchAppointments = async () => {
 const getStatusColor = (status) => {
     switch (status) {
         case 'BOOKED': return '#67C23A'
-        case 'CANCELLED': return '#F56C6C'
+        case 'CANCELED': return '#F56C6C'
         case 'COMPLETED': return '#909399'
         default: return '#409EFF'
     }
@@ -897,5 +962,27 @@ const deleteStylist = async (id) => {
     text-align: center;
     border: 1px dashed #d9d9d9;
     border-radius: 6px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .action-buttons .el-button {
+        margin-left: 0 !important;
+        /* Override Element Plus margin */
+        width: 100%;
+        margin-bottom: 5px;
+    }
 }
 </style>

@@ -23,6 +23,8 @@ import org.springframework.http.MediaType;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+import com.barbershop.service.LineNotificationService;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -33,6 +35,9 @@ public class AppointmentController {
 
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private LineNotificationService lineNotificationService;
 
     @Autowired
     private StylistRepository stylistRepository;
@@ -48,6 +53,7 @@ public class AppointmentController {
 
     @org.springframework.beans.factory.annotation.Value("${app.business-hours.end}")
     private String businessEnd;
+
 
     @GetMapping("/available-slots")
     public ResponseEntity<List<String>> getAvailableSlots(
@@ -78,19 +84,24 @@ public class AppointmentController {
         LocalTime currentSlot = startTime;
         // Ensure the slot ends at or before business end time
         while (!currentSlot.plusMinutes(durationMinutes).isAfter(endTime)) {
-            LocalDateTime slotStart = LocalDateTime.of(date, currentSlot);
-            LocalDateTime slotEnd = slotStart.plusMinutes(durationMinutes);
+            LocalDateTime slotStart = LocalDateTime.of(date, currentSlot).truncatedTo(ChronoUnit.MINUTES);
+            LocalDateTime slotEnd = slotStart.plusMinutes(durationMinutes).truncatedTo(ChronoUnit.MINUTES);
 
             // Check for conflicts
             boolean hasConflict = false;
 
             // 1. Check Appointments (In-Memory)
             for (Appointment appt : dayAppointments) {
-                // Skip CANCELLED appointments
-                if (appt.getStatus() == AppointmentStatus.CANCELLED) {
+                // Skip CANCELED appointments
+                if (appt.getStatus() == AppointmentStatus.CANCELED) {
                     continue;
                 }
-                if (appt.getStartTime().isBefore(slotEnd) && appt.getEndTime().isAfter(slotStart)) {
+                
+                // Truncate to minutes to avoid nanosecond precision issues causing false conflicts
+                LocalDateTime apptStart = appt.getStartTime().truncatedTo(ChronoUnit.MINUTES);
+                LocalDateTime apptEnd = appt.getEndTime().truncatedTo(ChronoUnit.MINUTES);
+                
+                if (apptStart.isBefore(slotEnd) && apptEnd.isAfter(slotStart)) {
                     hasConflict = true;
                     break;
                 }
@@ -146,8 +157,8 @@ public class AppointmentController {
         List<Appointment> conflicts = appointmentRepository.findOverlappingAppointments(
                 stylist.getId(), start, end);
         
-        // Filter out CANCELLED appointments
-        conflicts.removeIf(a -> a.getStatus() == AppointmentStatus.CANCELLED);
+        // Filter out CANCELED appointments
+        conflicts.removeIf(a -> a.getStatus() == AppointmentStatus.CANCELED);
 
         if (!conflicts.isEmpty()) {
             return ResponseEntity.badRequest().body("該時段已被預約，請再次選擇");
@@ -165,6 +176,9 @@ public class AppointmentController {
         // 7. Save Appointment
         Appointment appointment = new Appointment(user, stylist, service, start, end, AppointmentStatus.BOOKED);
         Appointment saved = appointmentRepository.save(appointment);
+
+        // Send LINE Notification
+        lineNotificationService.sendBookingSuccess(saved);
 
         return ResponseEntity.ok(saved);
     }
@@ -185,8 +199,11 @@ public class AppointmentController {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Appointment not found"));
         
-        appointment.setStatus(AppointmentStatus.CANCELLED);
+        appointment.setStatus(AppointmentStatus.CANCELED);
         appointmentRepository.save(appointment);
+
+        // Send LINE Notification
+        lineNotificationService.sendAppointmentCancelled(appointment);
         
         return ResponseEntity.ok().build();
     }

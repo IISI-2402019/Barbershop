@@ -48,6 +48,13 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.3</version>
         </dependency>
+
+        <!-- LINE Messaging API -->
+        <dependency>
+            <groupId>com.linecorp.bot</groupId>
+            <artifactId>line-bot-spring-boot-client</artifactId>
+            <version>8.4.0</version>
+        </dependency>
 	</dependencies>
 
 	<build>

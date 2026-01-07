@@ -50,7 +50,7 @@ export default {
     appointments: {
         noAppointments: 'No appointments found.',
         cancelConfirm: 'Are you sure you want to cancel this appointment?',
-        cancelSuccess: 'Appointment cancelled',
+        cancelSuccess: 'Appointment canceled',
         reschedule: 'Reschedule Appointment',
         current: 'Current',
         newDate: 'New Date',
@@ -85,6 +85,8 @@ export default {
         selectDateRange: 'Please select a date range',
         fillName: 'Please fill in name',
         appointmentDetails: 'Appointment Details',
+        cancelAppointmentConfirm: 'Are you sure you want to cancel this appointment?',
+        appointmentCanceled: 'Appointment canceled',
         customerName: 'Customer Name',
         customerPhone: 'Customer Phone',
         appointmentTime: 'Appointment Time',

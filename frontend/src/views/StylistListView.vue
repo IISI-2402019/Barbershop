@@ -5,8 +5,7 @@
             <el-col :span="24" :md="12" v-for="stylist in stylists" :key="stylist.id" class="mb-4">
                 <el-card shadow="hover">
                     <div class="stylist-card-content">
-                        <el-avatar :size="64"
-                            :src="getFullImageUrl(stylist.avatarUrl) || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'" />
+                        <el-avatar :size="64" :src="getFullImageUrl(stylist.avatarUrl)" :icon="UserFilled" />
                         <div class="info">
                             <h3>{{ stylist.name }}</h3>
                         </div>
@@ -23,6 +22,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { config } from '../config'
+import { UserFilled } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const stylists = ref([])

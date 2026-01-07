@@ -3,6 +3,6 @@ package com.barbershop.model;
 public enum AppointmentStatus {
     BOOKED,
     COMPLETED,
-    CANCELLED,
+    CANCELED,
     NO_SHOW
 }

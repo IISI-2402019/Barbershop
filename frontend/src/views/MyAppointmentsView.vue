@@ -3,7 +3,8 @@
         <h2>{{ $t('home.myAppointments') }}</h2>
         <div v-if="loading">{{ $t('common.loading') }}</div>
         <div v-else-if="appointments.length === 0">{{ $t('appointments.noAppointments') }}</div>
-        <el-card v-else v-for="appt in appointments" :key="appt.id" class="appointment-card">
+        <el-card v-else v-for="appt in appointments" :key="appt.id" class="appointment-card"
+            :class="{ 'is-disabled': isPast(appt.startTime) }">
             <template #header>
                 <div class="card-header">
                     <span>{{ formatTime(appt.startTime) }}</span>
@@ -13,8 +14,11 @@
             <p><strong>{{ $t('booking.stylist') }}:</strong> {{ appt.stylist.name }}</p>
             <p><strong>{{ $t('booking.service') }}:</strong> {{ appt.service.name }}</p>
             <div class="actions" style="margin-top: 10px; text-align: right;" v-if="appt.status === 'BOOKED'">
-                <el-button size="small" @click="handleEdit(appt)">{{ $t('common.edit') }}</el-button>
-                <el-button size="small" type="danger" @click="handleDelete(appt)">{{ $t('common.cancel') }}</el-button>
+                <el-button size="small" @click="handleEdit(appt)" :disabled="isPast(appt.startTime)">{{
+                    $t('common.edit')
+                    }}</el-button>
+                <el-button size="small" type="danger" @click="handleDelete(appt)" :disabled="isPast(appt.startTime)">{{
+                    $t('common.cancel') }}</el-button>
             </div>
         </el-card>
 
@@ -100,6 +104,10 @@ const fetchAppointments = async () => {
     } finally {
         loading.value = false
     }
+}
+
+const isPast = (dateString) => {
+    return new Date(dateString) < new Date()
 }
 
 const isToday = (dateString) => {
@@ -206,7 +214,7 @@ const confirmUpdate = async () => {
 const getStatusType = (status) => {
     switch (status) {
         case 'BOOKED': return 'success'
-        case 'CANCELLED': return 'danger'
+        case 'CANCELED': return 'danger'
         case 'COMPLETED': return 'info'
         default: return ''
     }
@@ -234,6 +242,20 @@ const formatTime = (timeStr) => {
 
 .appointment-card {
     margin-bottom: 15px;
+}
+
+.appointment-card.is-disabled {
+    opacity: 0.6;
+    background-color: #f5f7fa;
+    pointer-events: none;
+    /* Optional: prevents clicks on the card itself if needed, but we just disabled buttons */
+}
+
+/* Re-enable pointer events for buttons so we can see the disabled cursor if we want, 
+   but since buttons are disabled attribute, they won't click anyway. 
+   If we want the 'disabled cursor' on the whole card: */
+.appointment-card.is-disabled {
+    cursor: not-allowed;
 }
 
 .card-header {

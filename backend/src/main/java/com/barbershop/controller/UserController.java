@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -16,6 +17,32 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @GetMapping
+    public ResponseEntity<List<User>> searchUsers(@RequestParam(required = false) String query) {
+        if (query != null && !query.trim().isEmpty()) {
+            return ResponseEntity.ok(userRepository.findByRealNameContainingIgnoreCase(query.trim()));
+        }
+        return ResponseEntity.ok(userRepository.findAll());
+    }
+
+    @PutMapping("/{id}/role")
+    public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
+        String roleStr = payload.get("role");
+        if (roleStr == null) {
+            return ResponseEntity.badRequest().body("Role is required");
+        }
+        try {
+            UserRole newRole = UserRole.valueOf(roleStr);
+            return userRepository.findById(id).map(user -> {
+                user.setRole(newRole);
+                userRepository.save(user);
+                return ResponseEntity.ok(user);
+            }).orElse(ResponseEntity.notFound().build());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid role");
+        }
+    }
 
     @PostMapping("/login")
     @org.springframework.transaction.annotation.Transactional
