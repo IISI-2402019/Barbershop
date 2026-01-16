@@ -12,8 +12,7 @@ public class StoredFile {
     private String fileName;
     private String contentType;
 
-    @Lob
-    @Column(name = "data", columnDefinition="bytea")
+    @Column(name = "data")
     private byte[] data;
 
     public StoredFile() {
