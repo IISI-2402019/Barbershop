@@ -45,7 +45,7 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="confirmUpdate" :disabled="!newTime || !newServiceId">{{
+                    <el-button type="primary" @click="confirmUpdate" :disabled="!newTime || !newServiceId" :loading="loadingUpdate">{{
                         $t('common.confirm')
                     }}</el-button>
                 </span>
@@ -67,6 +67,7 @@ const userStore = useUserStore()
 const appointments = ref([])
 const services = ref([])
 const loading = ref(true)
+const loadingUpdate = ref(false)
 
 // Edit State
 const editDialogVisible = ref(false)
@@ -97,7 +98,14 @@ const fetchAppointments = async () => {
         const response = await axios.get(`${config.apiBaseUrl}/api/appointments/my`, {
             params: { userId: userStore.dbUser.id }
         })
-        appointments.value = response.data
+
+        // Filter: only show appointments within the last 6 months
+        const sixMonthsAgo = new Date()
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+
+        appointments.value = response.data.filter(appt => {
+            return new Date(appt.startTime) >= sixMonthsAgo
+        })
     } catch (error) {
         console.error('Failed to fetch appointments', error)
         ElMessage.error(t('common.error'))
@@ -207,6 +215,7 @@ const confirmUpdate = async () => {
     const dateStr = toLocalISOString(newDate.value)
     const dateTimeStr = `${dateStr}T${newTime.value}:00`
 
+    loadingUpdate.value = true
     try {
         await axios.put(`${config.apiBaseUrl}/api/appointments/${editingAppt.value.id}`, {
             userId: userStore.dbUser.id,
@@ -220,6 +229,8 @@ const confirmUpdate = async () => {
     } catch (error) {
         console.error('Failed to update', error)
         ElMessage.error(error.response?.data || t('common.error'))
+    } finally {
+        loadingUpdate.value = false
     }
 }
 

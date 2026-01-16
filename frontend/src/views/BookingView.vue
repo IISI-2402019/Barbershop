@@ -37,7 +37,7 @@
             </el-form-item>
 
             <el-form-item>
-                <el-button type="primary" @click="submitBooking">{{ $t('common.confirm') }}</el-button>
+                <el-button type="primary" @click="submitBooking" :loading="submitLoading">{{ $t('common.confirm') }}</el-button>
                 <el-button @click="$router.back()">{{ $t('common.cancel') }}</el-button>
             </el-form-item>
         </el-form>
@@ -62,6 +62,7 @@ const stylists = ref([])
 const services = ref([])
 const availableSlots = ref([])
 const loadingSlots = ref(false)
+const submitLoading = ref(false)
 
 const form = ref({
     stylistId: null,
@@ -147,6 +148,7 @@ const submitBooking = async () => {
         return
     }
 
+    submitLoading.value = true
     try {
         const startTime = `${form.value.date}T${form.value.time}:00`
 
@@ -174,6 +176,8 @@ const submitBooking = async () => {
         } else {
             ElMessage.error(error.response?.data || t('common.error'))
         }
+    } finally {
+        submitLoading.value = false
     }
 }
 </script>

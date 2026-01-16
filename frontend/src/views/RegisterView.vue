@@ -10,7 +10,7 @@
                 <el-input v-model="form.phone" :placeholder="$t('register.phone')" maxlength="10" />
             </el-form-item>
             <el-form-item>
-                <el-button type="primary" @click="submit">{{ $t('register.submit') }}</el-button>
+                <el-button type="primary" @click="submit" :loading="loading">{{ $t('register.submit') }}</el-button>
             </el-form-item>
         </el-form>
         <div v-else>
@@ -26,12 +26,14 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/user'
 import axios from 'axios'
 import { config } from '../config'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
+import liff from '@line/liff'
 
 const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
+const loading = ref(false)
 
 const form = ref({
     realName: '',
@@ -51,6 +53,7 @@ const submit = async () => {
         return
     }
 
+    loading.value = true
     try {
         const res = await axios.put(`${config.apiBaseUrl}/api/users/${userStore.dbUser.id}/complete-profile`, {
             realName: form.value.realName,
@@ -60,10 +63,28 @@ const submit = async () => {
         // Update store
         userStore.setDbUser(res.data)
         ElMessage.success(t('register.success'))
+
+        // Check for friendship
+        try {
+            if (liff.isInClient() || liff.isLoggedIn()) {
+                const friendship = await liff.getFriendship()
+                if (!friendship.friendFlag) {
+                    await ElMessageBox.alert('請加入官方帳號好友以接收預約通知！', '提醒', {
+                        confirmButtonText: '好',
+                        type: 'warning'
+                    })
+                }
+            }
+        } catch (e) {
+            console.error('Failed to check friendship')
+        }
+
         router.push('/')
     } catch (error) {
         console.error(error)
         ElMessage.error(error.response?.data || t('common.error'))
+    } finally {
+        loading.value = false
     }
 }
 </script>

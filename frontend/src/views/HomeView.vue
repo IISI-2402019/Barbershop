@@ -35,20 +35,23 @@
 
         <div v-else class="login-prompt">
             <p>{{ $t('home.loginPrompt') }}</p>
-            <el-button type="success" size="large" @click="manualLogin">{{ $t('home.loginWithLine') }}</el-button>
+            <el-button type="success" size="large" @click="manualLogin" :loading="loading">{{ $t('home.loginWithLine') }}</el-button>
         </div>
     </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useUserStore } from '../stores/user'
 import liff from '@line/liff'
 import logoEntry from '../assets/bbs.png'
 import { Calendar, User, Setting } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
+const loading = ref(false)
 
 const manualLogin = () => {
+    loading.value = true
     if (!liff.isLoggedIn()) {
         liff.login({ 
             redirectUri: window.location.href,

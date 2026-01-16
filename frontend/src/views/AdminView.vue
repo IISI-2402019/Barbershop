@@ -9,7 +9,7 @@
                     <span class="date-separator">{{ $t('admin.to') }}</span>
                     <el-date-picker v-model="exportEndDate" type="datetime" :placeholder="$t('admin.endDate')"
                         style="margin-right: 10px;" class="date-picker-item" />
-                    <el-button type="success" @click="exportExcel">{{ $t('admin.exportExcel') }}</el-button>
+                    <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel') }}</el-button>
                 </div>
                 <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
             </el-tab-pane>
@@ -31,7 +31,7 @@
                             </el-upload>
                         </el-form-item>
                         <el-form-item>
-                            <el-button type="primary" @click="addStylist">{{ $t('common.add') }}</el-button>
+                            <el-button type="primary" @click="addStylist" :loading="loadingStylist">{{ $t('common.add') }}</el-button>
                         </el-form-item>
                     </el-form>
 
@@ -89,7 +89,7 @@
                             <el-input-number v-model="newService.durationHours" :step="0.5" :min="0.5" />
                         </el-form-item>
                         <el-form-item>
-                            <el-button type="primary" @click="addService">{{ $t('common.add') }}</el-button>
+                            <el-button type="primary" @click="addService" :loading="loadingService">{{ $t('common.add') }}</el-button>
                         </el-form-item>
                     </el-form>
 
@@ -153,7 +153,7 @@
                            <el-time-select v-model="settingsForm.business_hours_end" start="06:00" step="00:30" end="23:00" :placeholder="$t('admin.businessHoursEnd')" />
                         </el-form-item>
                         <el-form-item>
-                            <el-button type="primary" @click="saveSettings">{{ $t('common.save') }}</el-button>
+                            <el-button type="primary" @click="saveSettings" :loading="loadingSettings">{{ $t('common.save') }}</el-button>
                         </el-form-item>
                     </el-form>
                 </div>
@@ -180,7 +180,7 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="editServiceDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="updateService">{{ $t('common.save') }}</el-button>
+                    <el-button type="primary" @click="updateService" :loading="loadingService">{{ $t('common.save') }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -206,7 +206,7 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="addScheduleDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="addSchedule">{{ isEditingSchedule ? $t('common.save') :
+                    <el-button type="primary" @click="addSchedule" :loading="loadingSchedule">{{ isEditingSchedule ? $t('common.save') :
                         $t('common.add') }}</el-button>
                 </span>
             </template>
@@ -224,7 +224,7 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="storeClosedDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="addStoreClosedSchedule">{{ isEditingSchedule ? $t('common.save') :
+                    <el-button type="primary" @click="addStoreClosedSchedule" :loading="loadingStoreClosed">{{ isEditingSchedule ? $t('common.save') :
                         $t('common.add') }}</el-button>
                 </span>
             </template>
@@ -271,7 +271,7 @@
             <template #footer>
                 <span class="dialog-footer">
                     <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
-                    <el-button type="primary" @click="updateStylist">{{ $t('common.save') }}</el-button>
+                    <el-button type="primary" @click="updateStylist" :loading="loadingStylist">{{ $t('common.save') }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -338,10 +338,19 @@ const stylists = ref([])
 const services = ref([])
 const searchQuery = ref('')
 const serviceSearchQuery = ref('')
-const exportDateRange = ref([])
+const exportStartDate = ref('')
+const exportEndDate = ref('')
 const userSearchQuery = ref('')
 const userList = ref([])
 const loadingUsers = ref(false)
+
+// Loading states
+const loadingStylist = ref(false)
+const loadingService = ref(false)
+const loadingSettings = ref(false)
+const loadingExport = ref(false)
+const loadingSchedule = ref(false)
+const loadingStoreClosed = ref(false)
 
 // Schedule State
 const addScheduleDialogVisible = ref(false)
@@ -601,6 +610,7 @@ const fetchSettings = async () => {
 }
 
 const saveSettings = async () => {
+    loadingSettings.value = true
     try {
         await axios.post(`${config.apiBaseUrl}/api/settings`, settingsForm.value)
         ElMessage.success(t('common.success'))
@@ -613,6 +623,8 @@ const saveSettings = async () => {
         scheduleCalendarOptions.value.slotMaxTime = end
     } catch (e) {
          ElMessage.error(t('common.error'))
+    } finally {
+        loadingSettings.value = false
     }
 }
 
@@ -698,6 +710,7 @@ const addStoreClosedSchedule = async () => {
     let start = storeClosedSchedule.value.dateRange[0]
     let end = storeClosedSchedule.value.dateRange[1]
 
+    loadingStoreClosed.value = true
     try {
         const payload = {
             stylistId: null, // Null means Global/Store Closed
@@ -720,6 +733,8 @@ const addStoreClosedSchedule = async () => {
     } catch (error) {
         console.error('Failed to save store closed schedule', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingStoreClosed.value = false
     }
 }
 
@@ -732,6 +747,7 @@ const addSchedule = async () => {
     let start = newSchedule.value.dateRange[0]
     let end = newSchedule.value.dateRange[1]
 
+    loadingSchedule.value = true
     try {
         const payload = {
             stylistId: newSchedule.value.stylistId,
@@ -754,6 +770,8 @@ const addSchedule = async () => {
     } catch (error) {
         console.error('Failed to save schedule', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingSchedule.value = false
     }
 }
 
@@ -812,6 +830,7 @@ const exportExcel = async () => {
     const start = new Date(exportStartDate.value).toISOString()
     const end = new Date(exportEndDate.value).toISOString()
 
+    loadingExport.value = true
     try {
         const response = await axios.get(`${config.apiBaseUrl}/api/appointments/export`, {
             params: { start, end },
@@ -828,6 +847,8 @@ const exportExcel = async () => {
     } catch (error) {
         console.error('Export failed', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingExport.value = false
     }
 }
 
@@ -860,6 +881,7 @@ const addService = async () => {
         ElMessage.warning(t('admin.fillServicePrice'))
         return
     }
+    loadingService.value = true
     try {
         await axios.post(`${config.apiBaseUrl}/api/services`, newService.value)
         ElMessage.success(t('admin.serviceAdded'))
@@ -868,6 +890,8 @@ const addService = async () => {
     } catch (error) {
         console.error('Failed to add service', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingService.value = false
     }
 }
 
@@ -881,6 +905,7 @@ const updateService = async () => {
         ElMessage.warning(t('admin.fillServiceName'))
         return
     }
+    loadingService.value = true
     try {
         await axios.put(`${config.apiBaseUrl}/api/services/${editingService.value.id}`, editingService.value)
         ElMessage.success(t('admin.serviceUpdated'))
@@ -889,6 +914,8 @@ const updateService = async () => {
     } catch (error) {
         console.error('Failed to update service', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingService.value = false
     }
 }
 
@@ -934,6 +961,7 @@ const addStylist = async () => {
         ElMessage.warning(t('admin.fillName'))
         return
     }
+    loadingStylist.value = true
     try {
         await axios.post(`${config.apiBaseUrl}/api/stylists`, {
             name: newStylist.value.name,
@@ -945,6 +973,8 @@ const addStylist = async () => {
     } catch (error) {
         console.error('Failed to add stylist', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingStylist.value = false
     }
 }
 
@@ -958,6 +988,7 @@ const updateStylist = async () => {
         ElMessage.warning(t('admin.fillName'))
         return
     }
+    loadingStylist.value = true
     try {
         await axios.put(`${config.apiBaseUrl}/api/stylists/${editingStylist.value.id}`, {
             name: editingStylist.value.name,
@@ -969,6 +1000,8 @@ const updateStylist = async () => {
     } catch (error) {
         console.error('Failed to update stylist', error)
         ElMessage.error(t('common.error'))
+    } finally {
+        loadingStylist.value = false
     }
 }
 
