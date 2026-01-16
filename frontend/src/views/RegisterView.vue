@@ -67,16 +67,32 @@ const submit = async () => {
         // Check for friendship
         try {
             if (liff.isInClient() || liff.isLoggedIn()) {
-                const friendship = await liff.getFriendship()
-                if (!friendship.friendFlag) {
-                    await ElMessageBox.alert('請加入官方帳號好友以接收預約通知！', '提醒', {
-                        confirmButtonText: '好',
-                        type: 'warning'
+                const friendship = await liff.getFriendship().catch((err) => {
+                    console.error('getFriendship failed', err)
+                    return { friendFlag: false }
+                })
+                
+                if (!friendship || !friendship.friendFlag) {
+                    // Prompt user to add friend
+                    await ElMessageBox.confirm(
+                        '請加入官方帳號好友以接收預約通知！',
+                        '加入好友',
+                        {
+                            confirmButtonText: '前往加入',
+                            cancelButtonText: '稍後再說',
+                            type: 'warning'
+                        }
+                    ).then(() => {
+                        // Open Add Friend Link
+                        // Note: Replace @your_line_id with your actual Basic ID or Premium ID
+                        window.open(`https://line.me/R/ti/p/${config.lineOaId}`, '_blank')
+                    }).catch(() => {
+                        // User cancelled
                     })
                 }
             }
         } catch (e) {
-            console.error('Failed to check friendship')
+            console.error('Failed to check friendship workflow', e)
         }
 
         router.push('/')
