@@ -50,7 +50,10 @@ const userStore = useUserStore()
 
 const manualLogin = () => {
     if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: window.location.href })
+        liff.login({ 
+            redirectUri: window.location.href,
+            bot_prompt: 'aggressive'
+        })
     }
 }
 </script>

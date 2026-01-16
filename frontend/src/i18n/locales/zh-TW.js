@@ -130,7 +130,11 @@ export default {
         storeClosedDefaultReason: '店休',
         storeClosedAdded: '店休已新增',
         scheduleDetails: '排班詳情',
-        scheduleUpdated: '排班已更新'
+        scheduleUpdated: '排班已更新',
+        settings: '系統設定',
+        businessHours: '營業時間',
+        businessHoursStart: '開始時間',
+        businessHoursEnd: '結束時間'
     },
     register: {
         title: '完善個人資料',

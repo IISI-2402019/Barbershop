@@ -37,7 +37,7 @@
                         :disabled-date="disabledDate" @change="fetchSlots" />
                 </el-form-item>
                 <el-form-item :label="$t('appointments.newTime')" v-if="newDate">
-                    <el-select v-model="newTime" :placeholder="$t('booking.selectTime')">
+                    <el-select v-model="newTime" :placeholder="$t('booking.selectTime')" v-loading="loadingSlots">
                         <el-option v-for="slot in availableSlots" :key="slot" :label="slot" :value="slot" />
                     </el-select>
                 </el-form-item>
@@ -169,24 +169,36 @@ const toLocalISOString = (date) => {
     return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10)
 }
 
+const loadingSlots = ref(false)
+
 const fetchSlots = async () => {
     if (!newDate.value || !editingAppt.value) return
 
-    // Simple slot generation for now (10:00 to 20:00)
-    // In a real app, fetch from backend based on stylist availability
-    // We can reuse the logic from BookingView if we extract it, but for now let's mock it or fetch simply
-    // Ideally we should call an API to get available slots for the stylist on that day
+    const selectedServiceId = newServiceId.value
+    const stylistId = editingAppt.value.stylist.id
+    const dateStr = toLocalISOString(newDate.value)
 
-    // Let's just generate slots and let the backend reject if busy for simplicity in this iteration
-    // Or better: Call the same API used in BookingView if available?
-    // We don't have a public "get slots" API yet, BookingView calculates it.
+    if (!selectedServiceId || !stylistId || !dateStr) return
 
-    const slots = []
-    for (let i = 10; i < 20; i++) {
-        slots.push(`${i}:00`)
-        slots.push(`${i}:30`)
+    loadingSlots.value = true
+    try {
+        const response = await axios.get(`${config.apiBaseUrl}/api/appointments/available-slots`, {
+            params: {
+                stylistId: stylistId,
+                date: dateStr,
+                serviceId: selectedServiceId,
+                excludeAppointmentId: editingAppt.value.id,
+                _t: Date.now() // Prevent caching
+            }
+        })
+        availableSlots.value = response.data
+    } catch (error) {
+        console.error('Failed to fetch slots', error)
+        ElMessage.error(t('common.error'))
+        availableSlots.value = []
+    } finally {
+        loadingSlots.value = false
     }
-    availableSlots.value = slots
 }
 
 const confirmUpdate = async () => {

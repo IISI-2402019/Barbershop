@@ -123,7 +123,8 @@ const fetchAvailableSlots = async () => {
             params: {
                 stylistId: form.value.stylistId,
                 date: form.value.date,
-                serviceId: form.value.serviceId
+                serviceId: form.value.serviceId,
+                _t: Date.now() // Prevent caching
             }
         })
         availableSlots.value = res.data
@@ -160,7 +161,7 @@ const submitBooking = async () => {
 
         ElMessage.success(t('booking.success'))
         setTimeout(() => {
-            router.push('/')
+            router.push({ name: 'my-appointments' })
         }, 1500)
     } catch (error) {
         console.error(error)

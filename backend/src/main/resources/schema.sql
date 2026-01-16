@@ -53,3 +53,9 @@ CREATE TABLE IF NOT EXISTS schedules (
 
 -- 修改 stylist_id 為可空 (針對舊資料表)
 ALTER TABLE schedules ALTER COLUMN stylist_id DROP NOT NULL;
+
+-- 系統設定表
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key VARCHAR(255) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL
+);

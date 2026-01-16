@@ -30,7 +30,7 @@ public class AppointmentReminderScheduler {
     // Or maybe 08:00 AM? User said "One day reminder". Usually sent the evening before or morning of.
     // Let's assume 08:00 PM the day before (or 20:00).
     // Cron expression: second, minute, hour, day of month, month, day of week
-    @Scheduled(cron = "0 0 20 * * ?") 
+    @Scheduled(cron = "0 0 12 * * ?") 
     public void sendReminders() {
         logger.info("Starting scheduled appointment reminders...");
 

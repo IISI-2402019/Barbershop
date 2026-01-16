@@ -3,6 +3,7 @@ package com.barbershop.controller;
 import com.barbershop.dto.AppointmentRequest;
 import com.barbershop.model.*;
 import com.barbershop.repository.*;
+import com.barbershop.service.SystemSettingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -48,18 +49,15 @@ public class AppointmentController {
     @Autowired
     private ScheduleRepository scheduleRepository;
 
-    @org.springframework.beans.factory.annotation.Value("${app.business-hours.start}")
-    private String businessStart;
-
-    @org.springframework.beans.factory.annotation.Value("${app.business-hours.end}")
-    private String businessEnd;
-
+    @Autowired
+    private SystemSettingService systemSettingService;
 
     @GetMapping("/available-slots")
     public ResponseEntity<List<String>> getAvailableSlots(
             @RequestParam Long stylistId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Long serviceId) {
+            @RequestParam Long serviceId,
+            @RequestParam(required = false) Long excludeAppointmentId) {
 
         Stylist stylist = stylistRepository.findById(stylistId)
                 .orElseThrow(() -> new RuntimeException("Stylist not found"));
@@ -69,7 +67,10 @@ public class AppointmentController {
         List<String> availableSlots = new ArrayList<>();
         long durationMinutes = (long) (service.getDurationHours() * 60);
 
-        // Define working hours from config
+        // Define working hours from DB
+        String businessStart = systemSettingService.getSetting("business_hours_start", "10:00");
+        String businessEnd = systemSettingService.getSetting("business_hours_end", "20:00");
+        
         LocalTime startTime = LocalTime.parse(businessStart);
         LocalTime endTime = LocalTime.parse(businessEnd);
 
@@ -94,6 +95,11 @@ public class AppointmentController {
             for (Appointment appt : dayAppointments) {
                 // Skip CANCELED appointments
                 if (appt.getStatus() == AppointmentStatus.CANCELED) {
+                    continue;
+                }
+                
+                // Skip the appointment being edited (if provided)
+                if (excludeAppointmentId != null && appt.getId().equals(excludeAppointmentId)) {
                     continue;
                 }
                 

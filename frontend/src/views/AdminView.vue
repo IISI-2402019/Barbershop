@@ -4,9 +4,11 @@
         <el-tabs v-model="activeTab">
             <el-tab-pane :label="$t('admin.appointments')" name="appointments">
                 <div class="appointment-controls" style="margin-bottom: 20px;">
-                    <el-date-picker v-model="exportDateRange" type="datetimerange" :range-separator="$t('admin.to')"
-                        :start-placeholder="$t('admin.startDate')" :end-placeholder="$t('admin.endDate')"
-                        style="margin-right: 10px;" />
+                    <el-date-picker v-model="exportStartDate" type="datetime" :placeholder="$t('admin.startDate')"
+                        style="margin-right: 5px;" class="date-picker-item" />
+                    <span class="date-separator">{{ $t('admin.to') }}</span>
+                    <el-date-picker v-model="exportEndDate" type="datetime" :placeholder="$t('admin.endDate')"
+                        style="margin-right: 10px;" class="date-picker-item" />
                     <el-button type="success" @click="exportExcel">{{ $t('admin.exportExcel') }}</el-button>
                 </div>
                 <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
@@ -138,6 +140,22 @@
                             </template>
                         </el-table-column>
                     </el-table>
+                </div>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('admin.settings')" name="settings">
+                <div class="settings-management">
+                    <h3>{{ $t('admin.businessHours') }}</h3>
+                    <el-form :model="settingsForm" label-width="120px">
+                        <el-form-item :label="$t('admin.businessHoursStart')">
+                           <el-time-select v-model="settingsForm.business_hours_start" start="06:00" step="00:30" end="23:00" :placeholder="$t('admin.businessHoursStart')" />
+                        </el-form-item>
+                         <el-form-item :label="$t('admin.businessHoursEnd')">
+                           <el-time-select v-model="settingsForm.business_hours_end" start="06:00" step="00:30" end="23:00" :placeholder="$t('admin.businessHoursEnd')" />
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="saveSettings">{{ $t('common.save') }}</el-button>
+                        </el-form-item>
+                    </el-form>
                 </div>
             </el-tab-pane>
         </el-tabs>
@@ -557,8 +575,50 @@ const updateUserRole = async (user) => {
     }
 }
 
+// Settings Logic
+const settingsForm = ref({
+    business_hours_start: '10:00',
+    business_hours_end: '20:00'
+})
+
+const fetchSettings = async () => {
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/settings`)
+        if (res.data && Object.keys(res.data).length > 0) {
+            settingsForm.value = { ...settingsForm.value, ...res.data }
+            // Update calendar options
+            const start = settingsForm.value.business_hours_start
+            const end = settingsForm.value.business_hours_end
+            
+            calendarOptions.value.slotMinTime = start
+            calendarOptions.value.slotMaxTime = end
+            scheduleCalendarOptions.value.slotMinTime = start
+            scheduleCalendarOptions.value.slotMaxTime = end
+        }
+    } catch (e) {
+        console.error('Failed to fetch settings', e)
+    }
+}
+
+const saveSettings = async () => {
+    try {
+        await axios.post(`${config.apiBaseUrl}/api/settings`, settingsForm.value)
+        ElMessage.success(t('common.success'))
+        const start = settingsForm.value.business_hours_start
+        const end = settingsForm.value.business_hours_end
+        
+        calendarOptions.value.slotMinTime = start
+        calendarOptions.value.slotMaxTime = end
+        scheduleCalendarOptions.value.slotMinTime = start
+        scheduleCalendarOptions.value.slotMaxTime = end
+    } catch (e) {
+         ElMessage.error(t('common.error'))
+    }
+}
+
 onMounted(async () => {
     if (userStore.dbUser?.role === 'ADMIN') {
+        await fetchSettings()
         await fetchAppointments()
         await fetchStylists()
         await fetchServices()
@@ -740,7 +800,7 @@ const formatTime = (timeStr) => {
 }
 
 const exportExcel = async () => {
-    if (!exportDateRange.value || exportDateRange.value.length !== 2) {
+    if (!exportStartDate.value || !exportEndDate.value) {
         ElMessage.warning(t('admin.selectDateRange'))
         return
     }
@@ -749,8 +809,8 @@ const exportExcel = async () => {
     // However, standard ISO string is UTC. Let's send it and see.
     // Actually, Element Plus date picker returns Date objects.
 
-    const start = exportDateRange.value[0].toISOString()
-    const end = exportDateRange.value[1].toISOString()
+    const start = new Date(exportStartDate.value).toISOString()
+    const end = new Date(exportEndDate.value).toISOString()
 
     try {
         const response = await axios.get(`${config.apiBaseUrl}/api/appointments/export`, {
@@ -983,6 +1043,33 @@ const deleteStylist = async (id) => {
         /* Override Element Plus margin */
         width: 100%;
         margin-bottom: 5px;
+    }
+}
+
+.appointment-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .appointment-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .appointment-controls .el-date-editor {
+        width: 100% !important;
+        margin-right: 0 !important;
+        margin-bottom: 5px;
+    }
+    .appointment-controls .date-separator {
+        text-align: center;
+        display: block;
+        margin-bottom: 5px;
+    }
+    .appointment-controls button {
+        width: 100%;
     }
 }
 </style>

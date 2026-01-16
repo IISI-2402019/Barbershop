@@ -124,7 +124,11 @@ export default {
         storeClosedDefaultReason: 'Store Closed',
         storeClosedAdded: 'Store Closed schedule added',
         scheduleDetails: 'Schedule Details',
-        scheduleUpdated: 'Schedule updated'
+        scheduleUpdated: 'Schedule updated',
+        settings: 'System Settings',
+        businessHours: 'Business Hours',
+        businessHoursStart: 'Start Time',
+        businessHoursEnd: 'End Time'
     },
     register: {
         title: 'Complete Profile',
