@@ -111,4 +111,11 @@ const submit = async () => {
     margin: 50px auto;
     padding: 20px;
 }
+
+@media (max-width: 480px) {
+    .register-container {
+        margin: 20px auto;
+        padding: 20px 16px;
+    }
+}
 </style>

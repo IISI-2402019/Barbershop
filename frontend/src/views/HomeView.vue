@@ -71,6 +71,12 @@ const manualLogin = () => {
     align-items: center;
 }
 
+@media (max-width: 480px) {
+    .home {
+        padding: 30px 20px;
+    }
+}
+
 .logo {
     max-width: 300px;
     margin-bottom: 30px;

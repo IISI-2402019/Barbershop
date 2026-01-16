@@ -51,6 +51,12 @@ const selectStylist = (id) => {
     padding: 20px;
 }
 
+@media (max-width: 480px) {
+    .stylist-list {
+        padding: 20px 16px;
+    }
+}
+
 .mb-4 {
     margin-bottom: 16px;
 }

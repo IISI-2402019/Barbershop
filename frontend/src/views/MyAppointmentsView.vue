@@ -263,6 +263,12 @@ const formatTime = (timeStr) => {
     margin: 0 auto;
 }
 
+@media (max-width: 480px) {
+    .my-appointments {
+        padding: 20px 16px;
+    }
+}
+
 .appointment-card {
     margin-bottom: 15px;
 }

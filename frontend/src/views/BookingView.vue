@@ -187,4 +187,10 @@ const submitBooking = async () => {
     max-width: 600px;
     margin: 0 auto;
 }
+
+@media (max-width: 480px) {
+    .booking-container {
+        padding: 20px 16px;
+    }
+}
 </style>

@@ -1022,6 +1022,12 @@ const deleteStylist = async (id) => {
     padding: 20px;
 }
 
+@media (max-width: 480px) {
+    .admin-container {
+        padding: 20px 16px;
+    }
+}
+
 .stylist-management {
     margin-top: 20px;
 }
