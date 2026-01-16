@@ -128,12 +128,12 @@
                     </div>
 
                     <el-table :data="userList" style="width: 100%" v-loading="loadingUsers">
-                        <el-table-column prop="realName" :label="$t('register.name')" />
-                        <el-table-column prop="phone" :label="$t('register.phone')" />
-                        <el-table-column :label="$t('admin.role')">
+                        <el-table-column prop="realName" :label="$t('register.name')" min-width="100" />
+                        <el-table-column prop="phone" :label="$t('register.phone')" min-width="120" />
+                        <el-table-column :label="$t('admin.role')" min-width="180">
                             <template #default="scope">
                                 <el-select v-model="scope.row.role" @change="updateUserRole(scope.row)"
-                                    style="width: 140px;">
+                                    style="width: 100%">
                                     <el-option :label="$t('admin.customer')" value="CUSTOMER" />
                                     <el-option :label="$t('admin.admin')" value="ADMIN" />
                                 </el-select>
