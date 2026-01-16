@@ -13,9 +13,9 @@ export const initLiff = async (liffId) => {
             // 注意：這會導致頁面重導向至 LINE 登入頁
             if (!liff.isInClient()) {
                 // bot_prompt: 'aggressive' will open a window to add friend after login if not already friend
-                liff.login({ 
+                liff.login({
                     redirectUri: window.location.href,
-                    bot_prompt: 'aggressive' 
+                    bot_prompt: 'aggressive'
                 })
                 return null // 登入重導向中，回傳 null
             }
