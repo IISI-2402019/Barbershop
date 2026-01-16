@@ -1,59 +1,46 @@
 package com.barbershop.controller;
 
-import org.springframework.beans.factory.annotation.Value;
+import com.barbershop.model.StoredFile;
+import com.barbershop.repository.StoredFileRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/upload")
 public class FileUploadController {
 
-    @Value("${app.upload.dir}")
-    private String uploadDir;
+    @Autowired
+    private StoredFileRepository storedFileRepository;
 
     @PostMapping
+    @Transactional
     public ResponseEntity<Map<String, String>> uploadFile(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         try {
-            // Create upload directory if not exists
-            Path uploadPath = Paths.get(uploadDir).toAbsolutePath();
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
+            String fileName = file.getOriginalFilename();
+            String contentType = file.getContentType();
+            byte[] bytes = file.getBytes();
 
-            // Generate unique filename with UUID only (to avoid encoding issues with Chinese characters)
-            String originalFilename = file.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            String fileName = UUID.randomUUID().toString() + extension;
-            
-            Path path = uploadPath.resolve(fileName);
-            Files.copy(file.getInputStream(), path);
+            StoredFile storedFile = new StoredFile(fileName, contentType, bytes);
+            storedFileRepository.save(storedFile);
 
-            // Return the URL
-            // We return the relative path. The frontend should prepend the base URL if needed, 
-            // or if it's on the same domain, it works directly.
-            // Since frontend is on 5173 and backend on 8080, we need the full URL or the proxy to handle it.
-            // But usually we store the relative path in DB.
-            // Let's return the relative path "/uploads/filename".
-            // The frontend will display it as "http://localhost:8080/uploads/filename".
-            
-            String fileUrl = "/uploads/" + fileName;
+            // Return the URL for viewing the image
+            // We use the ID to retrieve it
+            String fileUrl = "/api/upload/image/" + storedFile.getId();
             
             Map<String, String> response = new HashMap<>();
             response.put("url", fileUrl);
@@ -63,6 +50,29 @@ public class FileUploadController {
         } catch (IOException e) {
             e.printStackTrace();
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/image/{id}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> getImage(@PathVariable String id) {
+        Optional<StoredFile> fileOptional = storedFileRepository.findById(id);
+        
+        if (fileOptional.isPresent()) {
+            StoredFile file = fileOptional.get();
+            
+            // Guess content type if null
+            String contentType = file.getContentType();
+            if (contentType == null) {
+                contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            }
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + file.getFileName() + "\"")
+                    .body(file.getData());
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 }

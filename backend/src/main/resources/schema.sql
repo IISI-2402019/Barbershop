@@ -59,3 +59,11 @@ CREATE TABLE IF NOT EXISTS system_settings (
     setting_key VARCHAR(255) PRIMARY KEY,
     setting_value VARCHAR(255) NOT NULL
 );
+
+-- 檔案儲存表 (For Images)
+CREATE TABLE IF NOT EXISTS stored_files (
+    id VARCHAR(255) PRIMARY KEY,
+    file_name VARCHAR(255),
+    content_type VARCHAR(255),
+    data BYTEA
+);
