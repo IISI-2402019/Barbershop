@@ -141,13 +141,14 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> createAppointment(@RequestBody AppointmentRequest request) {
         // 1. Validate User
         User user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 2. Validate Stylist
-        Stylist stylist = stylistRepository.findById(request.getStylistId())
+        // 2. Validate Stylist (With Lock to prevent double booking)
+        Stylist stylist = stylistRepository.findByIdWithLock(request.getStylistId())
                 .orElseThrow(() -> new RuntimeException("Stylist not found"));
 
         // 3. Validate Service
