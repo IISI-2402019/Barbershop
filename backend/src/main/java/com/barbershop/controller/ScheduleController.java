@@ -35,7 +35,7 @@ public class ScheduleController {
         Stylist stylist = null;
         if (request.getStylistId() != null) {
             stylist = stylistRepository.findById(request.getStylistId())
-                    .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                    .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
         }
 
         Schedule schedule = new Schedule(
@@ -56,7 +56,7 @@ public class ScheduleController {
                     Stylist stylist = null;
                     if (request.getStylistId() != null) {
                         stylist = stylistRepository.findById(request.getStylistId())
-                                .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                                .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
                     }
                     schedule.setStylist(stylist);
                     schedule.setStartTime(request.getStartTime());

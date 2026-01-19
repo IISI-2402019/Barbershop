@@ -30,7 +30,7 @@ public class UserController {
     public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
         String roleStr = payload.get("role");
         if (roleStr == null) {
-            return ResponseEntity.badRequest().body("Role is required");
+            return ResponseEntity.badRequest().body("必須指定角色權限");
         }
         try {
             UserRole newRole = UserRole.valueOf(roleStr);
@@ -40,7 +40,7 @@ public class UserController {
                 return ResponseEntity.ok(user);
             }).orElse(ResponseEntity.notFound().build());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Invalid role");
+            return ResponseEntity.badRequest().body("無效的角色權限");
         }
     }
 
@@ -76,19 +76,35 @@ public class UserController {
     public ResponseEntity<?> completeProfile(@PathVariable Long id, @RequestBody java.util.Map<String, Object> payload) {
         String realName = (String) payload.get("realName");
         String phone = (String) payload.get("phone");
+        Integer reminderCycle = null;
+        
+        if (payload.containsKey("reminderCycle") && payload.get("reminderCycle") != null) {
+            try {
+                if (payload.get("reminderCycle") instanceof Integer) {
+                    reminderCycle = (Integer) payload.get("reminderCycle");
+                } else {
+                    reminderCycle = Integer.parseInt(payload.get("reminderCycle").toString());
+                }
+            } catch (NumberFormatException e) {
+                // Ignore
+            }
+        }
 
         if (realName == null || phone == null) {
-            return ResponseEntity.badRequest().body("Missing fields");
+            return ResponseEntity.badRequest().body("缺少必要欄位");
         }
 
         // Taiwan phone validation: 09xxxxxxxx
         if (!phone.matches("^09\\d{8}$")) {
-             return ResponseEntity.badRequest().body("Invalid phone number format. Must be 09xxxxxxxx");
+             return ResponseEntity.badRequest().body("手機號碼格式錯誤 (需為 09 開頭的 10 碼數字)");
         }
+
+        Integer finalReminderCycle = reminderCycle;
 
         return userRepository.findById(id).map(user -> {
             user.setRealName(realName);
             user.setPhone(phone);
+            user.setReminderCycle(finalReminderCycle);
             userRepository.save(user);
             return ResponseEntity.ok(user);
         }).orElse(ResponseEntity.notFound().build());

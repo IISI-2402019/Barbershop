@@ -21,6 +21,14 @@
                         <span>{{ $t('home.myAppointments') }}</span>
                     </div>
                 </el-button>
+                <el-button class="home-btn btn-profile" @click="$router.push('/profile')">
+                    <div class="btn-content">
+                        <el-icon :size="40">
+                            <EditPen />
+                        </el-icon>
+                        <span>{{ $t('profile.menuLink') }}</span>
+                    </div>
+                </el-button>
                 <el-button v-if="userStore.dbUser?.role === 'ADMIN'" class="home-btn btn-admin"
                     @click="$router.push('/admin')">
                     <div class="btn-content">
@@ -35,7 +43,8 @@
 
         <div v-else class="login-prompt">
             <p>{{ $t('home.loginPrompt') }}</p>
-            <el-button type="success" size="large" @click="manualLogin" :loading="loading">{{ $t('home.loginWithLine') }}</el-button>
+            <el-button type="success" size="large" @click="manualLogin" :loading="loading">{{ $t('home.loginWithLine')
+                }}</el-button>
         </div>
     </div>
 </template>
@@ -45,7 +54,7 @@ import { ref } from 'vue'
 import { useUserStore } from '../stores/user'
 import liff from '@line/liff'
 import logoEntry from '../assets/bbs.png'
-import { Calendar, User, Setting } from '@element-plus/icons-vue'
+import { Calendar, User, Setting, EditPen } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
 const loading = ref(false)
@@ -53,7 +62,7 @@ const loading = ref(false)
 const manualLogin = () => {
     loading.value = true
     if (!liff.isLoggedIn()) {
-        liff.login({ 
+        liff.login({
             redirectUri: window.location.href,
             bot_prompt: 'aggressive'
         })
@@ -157,6 +166,18 @@ const manualLogin = () => {
     background-color: var(--color-accent) !important;
     /* Darker Gold on hover */
     color: white !important;
+    transform: translateY(-5px);
+}
+
+.btn-profile {
+    background-color: #A3C9A8 !important;
+    color: white !important;
+    border: none !important;
+}
+
+.btn-profile:hover,
+.btn-profile:focus {
+    background-color: #84AC8A !important;
     transform: translateY(-5px);
 }
 

@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLineUserId(String lineUserId);
     List<User> findByRealNameContainingIgnoreCase(String realName);
+    List<User> findByReminderCycleIsNotNull();
 }

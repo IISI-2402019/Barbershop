@@ -28,6 +28,9 @@ public class User {
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+    
+    @Column(name = "reminder_cycle")
+    private Integer reminderCycle; // In days. Nullable.
 
     @PrePersist
     protected void onCreate() {
@@ -91,6 +94,14 @@ public class User {
 
     public void setRole(UserRole role) {
         this.role = role;
+    }
+
+    public Integer getReminderCycle() {
+        return reminderCycle;
+    }
+
+    public void setReminderCycle(Integer reminderCycle) {
+        this.reminderCycle = reminderCycle;
     }
 
     public LocalDateTime getCreatedAt() {

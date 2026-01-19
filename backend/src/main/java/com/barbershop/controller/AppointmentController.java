@@ -60,9 +60,9 @@ public class AppointmentController {
             @RequestParam(required = false) Long excludeAppointmentId) {
 
         Stylist stylist = stylistRepository.findById(stylistId)
-                .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
         Service service = serviceRepository.findById(serviceId)
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的服務項目"));
 
         List<String> availableSlots = new ArrayList<>();
         long durationMinutes = (long) (service.getDurationHours() * 60);
@@ -145,15 +145,15 @@ public class AppointmentController {
     public ResponseEntity<?> createAppointment(@RequestBody AppointmentRequest request) {
         // 1. Validate User
         User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new RuntimeException("找不到使用者"));
 
         // 2. Validate Stylist (With Lock to prevent double booking)
         Stylist stylist = stylistRepository.findByIdWithLock(request.getStylistId())
-                .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
 
         // 3. Validate Service
         Service service = serviceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的服務項目"));
 
         // 4. Calculate End Time
         LocalDateTime start = request.getStartTime();
@@ -177,7 +177,7 @@ public class AppointmentController {
                 stylist.getId(), end, start);
 
         if (!scheduleConflicts.isEmpty()) {
-            return ResponseEntity.badRequest().body("Stylist is not available at this time (Schedule Conflict or Store Closed).");
+            return ResponseEntity.badRequest().body("該設計師此時段無法預約（行程衝突或非營業時間）");
         }
 
         // 7. Save Appointment
@@ -204,7 +204,7 @@ public class AppointmentController {
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAppointment(@PathVariable Long id) {
         Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+                .orElseThrow(() -> new RuntimeException("找不到預約紀錄"));
         
         appointment.setStatus(AppointmentStatus.CANCELED);
         appointmentRepository.save(appointment);
@@ -218,15 +218,15 @@ public class AppointmentController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateAppointment(@PathVariable Long id, @RequestBody AppointmentRequest request) {
         Appointment appointment = appointmentRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Appointment not found"));
+                .orElseThrow(() -> new RuntimeException("找不到預約紀錄"));
 
         // Validate Stylist
         Stylist stylist = stylistRepository.findById(request.getStylistId())
-                .orElseThrow(() -> new RuntimeException("Stylist not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
 
         // Validate Service
         Service service = serviceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new RuntimeException("Service not found"));
+                .orElseThrow(() -> new RuntimeException("找不到指定的服務項目"));
 
         // Calculate End Time
         LocalDateTime start = request.getStartTime();
@@ -241,7 +241,7 @@ public class AppointmentController {
         conflicts.removeIf(a -> a.getId().equals(id));
 
         if (!conflicts.isEmpty()) {
-            return ResponseEntity.badRequest().body("Stylist is not available at this time.");
+            return ResponseEntity.badRequest().body("該設計師此時段無法預約");
         }
 
         appointment.setStylist(stylist);

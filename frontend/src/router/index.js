@@ -5,6 +5,7 @@ import BookingView from '../views/BookingView.vue'
 import AdminView from '../views/AdminView.vue'
 import MyAppointmentsView from '../views/MyAppointmentsView.vue'
 import RegisterView from '../views/RegisterView.vue'
+import ProfileView from '../views/ProfileView.vue'
 import { useUserStore } from '../stores/user'
 
 const router = createRouter({
@@ -14,6 +15,11 @@ const router = createRouter({
             path: '/',
             name: 'home',
             component: HomeView
+        },
+        {
+            path: '/profile',
+            name: 'profile',
+            component: ProfileView
         },
         {
             path: '/register',

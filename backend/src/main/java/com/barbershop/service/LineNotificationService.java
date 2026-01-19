@@ -42,6 +42,20 @@ public class LineNotificationService {
         );
         sendPushMessage(user.getLineUserId(), message);
     }
+    
+    public void sendCycleReminder(User user) {
+        if (messagingApiClient == null) return;
+        
+        String msg = String.format("""
+            親愛的 %s 您好:
+            
+            距離您上次理髮已經過了一段時間，是不是該回來整理一下頭髮了呢？
+            期待為您服務！
+            """,
+            user.getRealName() != null ? user.getRealName() : user.getDisplayName()
+        );
+        sendPushMessage(user.getLineUserId(), msg);
+    }
 
     public void sendAppointmentCancelled(Appointment appointment) {
         if (messagingApiClient == null) return;

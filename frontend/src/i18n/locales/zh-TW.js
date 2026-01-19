@@ -143,6 +143,14 @@ export default {
         submit: '送出',
         fillAll: '請填寫所有欄位',
         success: '註冊成功',
-        invalidPhone: '手機號碼格式錯誤 (需為 09 開頭的 10 碼數字)'
+        invalidPhone: '手機號碼格式錯誤 (需為 09 開頭的 10 碼數字)',
+        missingFields: '請填寫所有必要欄位'
+    },
+    profile: {
+        title: '基本資料管理',
+        menuLink: '個人資料',
+        reminderCycle: '提醒預約週期 (週)',
+        reminderCyclePlaceholder: '例如：4 (空白或 0 表示不提醒)',
+        reminderCycleHelp: '若填寫此欄位，系統將在您上次預約日＋週期週數當日發送LINE提醒。'
     }
 }

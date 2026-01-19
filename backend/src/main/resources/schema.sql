@@ -67,3 +67,4 @@ CREATE TABLE IF NOT EXISTS stored_files (
     content_type VARCHAR(255),
     data BYTEA
 );
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_cycle INTEGER;
