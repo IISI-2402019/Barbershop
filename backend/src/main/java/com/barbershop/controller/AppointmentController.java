@@ -1,6 +1,7 @@
 package com.barbershop.controller;
 
 import com.barbershop.dto.AppointmentRequest;
+import com.barbershop.dto.AppointmentUpdateRequest;
 import com.barbershop.model.*;
 import com.barbershop.repository.*;
 import com.barbershop.service.SystemSettingService;
@@ -36,7 +37,7 @@ public class AppointmentController {
 
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private LineNotificationService lineNotificationService;
 
@@ -70,7 +71,7 @@ public class AppointmentController {
         // Define working hours from DB
         String businessStart = systemSettingService.getSetting("business_hours_start", "10:00");
         String businessEnd = systemSettingService.getSetting("business_hours_end", "20:00");
-        
+
         LocalTime startTime = LocalTime.parse(businessStart);
         LocalTime endTime = LocalTime.parse(businessEnd);
 
@@ -78,10 +79,11 @@ public class AppointmentController {
         LocalDateTime dayStart = LocalDateTime.of(date, startTime);
         LocalDateTime dayEnd = LocalDateTime.of(date, endTime);
 
-        List<Appointment> dayAppointments = appointmentRepository.findOverlappingAppointments(stylistId, dayStart, dayEnd);
+        List<Appointment> dayAppointments = appointmentRepository.findOverlappingAppointments(stylistId, dayStart,
+                dayEnd);
         List<Schedule> daySchedules = scheduleRepository.findOverlappingSchedules(stylistId, dayEnd, dayStart);
 
-        // Iterate through slots (e.g., every 30 minutes)
+        // Iterate through slots (increment by 60 minutes for hourly slots)
         LocalTime currentSlot = startTime;
         // Ensure the slot ends at or before business end time
         while (!currentSlot.plusMinutes(durationMinutes).isAfter(endTime)) {
@@ -97,16 +99,17 @@ public class AppointmentController {
                 if (appt.getStatus() == AppointmentStatus.CANCELED) {
                     continue;
                 }
-                
+
                 // Skip the appointment being edited (if provided)
                 if (excludeAppointmentId != null && appt.getId().equals(excludeAppointmentId)) {
                     continue;
                 }
-                
-                // Truncate to minutes to avoid nanosecond precision issues causing false conflicts
+
+                // Truncate to minutes to avoid nanosecond precision issues causing false
+                // conflicts
                 LocalDateTime apptStart = appt.getStartTime().truncatedTo(ChronoUnit.MINUTES);
                 LocalDateTime apptEnd = appt.getEndTime().truncatedTo(ChronoUnit.MINUTES);
-                
+
                 if (apptStart.isBefore(slotEnd) && apptEnd.isAfter(slotStart)) {
                     hasConflict = true;
                     break;
@@ -122,7 +125,7 @@ public class AppointmentController {
                     }
                 }
             }
-            
+
             // 3. Check if slot is in the past (if date is today)
             if (!hasConflict && date.equals(LocalDate.now())) {
                 if (slotStart.isBefore(LocalDateTime.now())) {
@@ -134,7 +137,7 @@ public class AppointmentController {
                 availableSlots.add(currentSlot.toString());
             }
 
-            currentSlot = currentSlot.plusMinutes(30);
+            currentSlot = currentSlot.plusMinutes(60);
         }
 
         return ResponseEntity.ok(availableSlots);
@@ -163,7 +166,7 @@ public class AppointmentController {
         // 5. Check Availability (Appointments overlap)
         List<Appointment> conflicts = appointmentRepository.findOverlappingAppointments(
                 stylist.getId(), start, end);
-        
+
         // Filter out CANCELED appointments
         conflicts.removeIf(a -> a.getStatus() == AppointmentStatus.CANCELED);
 
@@ -172,7 +175,8 @@ public class AppointmentController {
         }
 
         // 6. Check Schedule Availability (Leave/Off-time overlap)
-        // This now checks both the stylist's personal schedule AND global store schedules (stylist IS NULL)
+        // This now checks both the stylist's personal schedule AND global store
+        // schedules (stylist IS NULL)
         List<Schedule> scheduleConflicts = scheduleRepository.findOverlappingSchedules(
                 stylist.getId(), end, start);
 
@@ -194,7 +198,7 @@ public class AppointmentController {
     public List<Appointment> getMyAppointments(@RequestParam Long userId) {
         return appointmentRepository.findByCustomerIdOrderByStartTimeDesc(userId);
     }
-    
+
     @GetMapping("/stylist/{stylistId}")
     public List<Appointment> getStylistAppointments(@PathVariable Long stylistId) {
         // In a real app, you might want to filter by date range
@@ -205,14 +209,48 @@ public class AppointmentController {
     public ResponseEntity<?> deleteAppointment(@PathVariable Long id) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("找不到預約紀錄"));
-        
+
         appointment.setStatus(AppointmentStatus.CANCELED);
         appointmentRepository.save(appointment);
 
         // Send LINE Notification
         lineNotificationService.sendAppointmentCancelled(appointment);
-        
+
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}/time")
+    @org.springframework.transaction.annotation.Transactional
+    public ResponseEntity<?> updateAppointmentTime(@PathVariable Long id,
+            @RequestBody AppointmentUpdateRequest request) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("找不到預約紀錄"));
+
+        Stylist stylist = stylistRepository.findByIdWithLock(appointment.getStylist().getId())
+                .orElseThrow(() -> new RuntimeException("找不到設計師"));
+
+        LocalDateTime newStart = request.getStartTime();
+        LocalDateTime newEnd = request.getEndTime();
+
+        if (newStart == null || newEnd == null) {
+            return ResponseEntity.badRequest().body("開始時間與結束時間皆必填");
+        }
+
+        if (!newEnd.isAfter(newStart)) {
+            return ResponseEntity.badRequest().body("結束時間必須晚於開始時間");
+        }
+
+        // NO Check for conflicts for Admin update
+
+        // NO Check schedule conflicts for Admin update
+
+        appointment.setStartTime(newStart);
+        appointment.setEndTime(newEnd);
+
+        appointmentRepository.save(appointment);
+        lineNotificationService.sendAppointmentUpdateNotification(appointment);
+
+        return ResponseEntity.ok(appointment);
     }
 
     @PutMapping("/{id}")
@@ -236,7 +274,7 @@ public class AppointmentController {
         // Check Availability (excluding current appointment)
         List<Appointment> conflicts = appointmentRepository.findOverlappingAppointments(
                 stylist.getId(), start, end);
-        
+
         // Remove current appointment from conflicts check
         conflicts.removeIf(a -> a.getId().equals(id));
 
@@ -248,7 +286,7 @@ public class AppointmentController {
         appointment.setService(service);
         appointment.setStartTime(start);
         appointment.setEndTime(end);
-        
+
         Appointment updated = appointmentRepository.save(appointment);
         return ResponseEntity.ok(updated);
     }
@@ -256,7 +294,16 @@ public class AppointmentController {
     @GetMapping
     public List<Appointment> getAllAppointments(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
+            @RequestParam(required = false) Long stylistId) {
+
+        if (stylistId != null) {
+            if (start != null && end != null) {
+                return appointmentRepository.findByStylistIdAndStartTimeBetweenOrderByStartTime(stylistId, start, end);
+            }
+            return appointmentRepository.findByStylistIdOrderByStartTime(stylistId);
+        }
+
         if (start != null && end != null) {
             return appointmentRepository.findByStartTimeBetweenOrderByStartTime(start, end);
         }
@@ -275,7 +322,7 @@ public class AppointmentController {
 
             // Header
             Row headerRow = sheet.createRow(0);
-            String[] columns = {"顧客姓名", "電話號碼", "預約時間", "服務項目", "設計師", "備註"};
+            String[] columns = { "顧客姓名", "電話號碼", "預約時間", "服務項目", "設計師", "備註" };
             for (int i = 0; i < columns.length; i++) {
                 Cell cell = headerRow.createCell(i);
                 cell.setCellValue(columns[i]);
@@ -291,9 +338,11 @@ public class AppointmentController {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
             for (Appointment appt : appointments) {
                 Row row = sheet.createRow(rowNum++);
-                String customerName = appt.getCustomer().getRealName() != null ? appt.getCustomer().getRealName() : appt.getCustomer().getDisplayName();
+                String customerName = appt.getCustomer().getRealName() != null ? appt.getCustomer().getRealName()
+                        : appt.getCustomer().getDisplayName();
                 row.createCell(0).setCellValue(customerName);
-                row.createCell(1).setCellValue(appt.getCustomer().getPhone() != null ? appt.getCustomer().getPhone() : "");
+                row.createCell(1)
+                        .setCellValue(appt.getCustomer().getPhone() != null ? appt.getCustomer().getPhone() : "");
                 row.createCell(2).setCellValue(appt.getStartTime().format(formatter));
                 row.createCell(3).setCellValue(appt.getService().getName());
                 row.createCell(4).setCellValue(appt.getStylist().getName());

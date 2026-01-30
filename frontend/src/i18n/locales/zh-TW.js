@@ -17,7 +17,16 @@ export default {
         warning: '警告',
         error: '發生錯誤',
         success: '成功',
-        book: '預約'
+        book: '預約',
+        days: {
+            sun: '星期日',
+            mon: '星期一',
+            tue: '星期二',
+            wed: '星期三',
+            thu: '星期四',
+            fri: '星期五',
+            sat: '星期六'
+        }
     },
     home: {
         title: '理髮店預約系統',
@@ -63,6 +72,13 @@ export default {
     admin: {
         appointments: '預約管理',
         stylists: '設計師管理',
+        personalSettings: '個人設定',
+        stylistRole: '設計師',
+        editTime: '修改時間',
+        newStartTime: '新開始時間',
+        newEndTime: '新結束時間',
+        timeUpdated: '預約時間已更新',
+        updateTimeConfirm: '修改時間將會發送通知給客戶，確定要執行嗎？',
         schedule: '排班管理',
         addStylist: '新增設計師',
         name: '姓名',
@@ -131,10 +147,23 @@ export default {
         storeClosedAdded: '店休已新增',
         scheduleDetails: '排班詳情',
         scheduleUpdated: '排班已更新',
-        settings: '系統設定',
-        businessHours: '營業時間',
+        settings: '營業時間與公休設定',
+        businessHours: '營業時間設定',
         businessHoursStart: '開始時間',
-        businessHoursEnd: '結束時間'
+        businessHoursEnd: '結束時間',
+        weeklyOffDay: '每週公休日',
+        selectOffDay: '選擇公休日',
+        storeClosed: '特殊公休設定 (國定假日/店休)',
+        addStoreClosed: '新增特殊公休',
+        storeClosedDescription: '設定特定的公休日期範圍（例如：國定假日、員工旅遊、店內整修）。',
+        allStylists: '所有設計師',
+        filterByRole: '角色篩選',
+        allRoles: '所有角色',
+        customerCard: '顧客卡',
+        cardUpdated: '顧客卡已更新',
+        content: '備註內容',
+        contentPlaceholder: '輸入客人的洗剪喜好或備註...',
+        imageUrlPlaceholder: '輸入圖片網址 (可選)'
     },
     register: {
         title: '完善個人資料',

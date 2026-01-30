@@ -68,3 +68,4 @@ CREATE TABLE IF NOT EXISTS stored_files (
     data BYTEA
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_cycle INTEGER;
+ALTER TABLE stylists ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES users(id);

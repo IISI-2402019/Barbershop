@@ -1,5 +1,6 @@
 package com.barbershop.repository;
 
+import com.barbershop.model.UserRole;
 import com.barbershop.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -10,6 +11,12 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByLineUserId(String lineUserId);
+
     List<User> findByRealNameContainingIgnoreCase(String realName);
+
+    List<User> findByRole(UserRole role);
+
+    List<User> findByRealNameContainingIgnoreCaseAndRole(String realName, UserRole role);
+
     List<User> findByReminderCycleIsNotNull();
 }

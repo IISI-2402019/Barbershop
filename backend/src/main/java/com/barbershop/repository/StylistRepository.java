@@ -16,4 +16,6 @@ public interface StylistRepository extends JpaRepository<Stylist, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Stylist s WHERE s.id = :id")
     Optional<Stylist> findByIdWithLock(@Param("id") Long id);
+
+    Optional<Stylist> findByUserId(Long userId);
 }

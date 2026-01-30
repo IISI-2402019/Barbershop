@@ -15,6 +15,10 @@ public class Stylist {
 
     private String avatarUrl;
 
+    @OneToOne
+    @JoinColumn(name = "user_id")
+    private User user;
+
     public Stylist() {
     }
 
@@ -45,5 +49,13 @@ public class Stylist {
 
     public void setAvatarUrl(String avatarUrl) {
         this.avatarUrl = avatarUrl;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
     }
 }

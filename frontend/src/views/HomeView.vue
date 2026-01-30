@@ -29,8 +29,8 @@
                         <span>{{ $t('profile.menuLink') }}</span>
                     </div>
                 </el-button>
-                <el-button v-if="userStore.dbUser?.role === 'ADMIN'" class="home-btn btn-admin"
-                    @click="$router.push('/admin')">
+                <el-button v-if="userStore.dbUser?.role === 'ADMIN' || userStore.dbUser?.role === 'STYLIST'"
+                    class="home-btn btn-admin" @click="$router.push('/admin')">
                     <div class="btn-content">
                         <el-icon :size="40">
                             <Setting />
@@ -44,7 +44,7 @@
         <div v-else class="login-prompt">
             <p>{{ $t('home.loginPrompt') }}</p>
             <el-button type="success" size="large" @click="manualLogin" :loading="loading">{{ $t('home.loginWithLine')
-                }}</el-button>
+            }}</el-button>
         </div>
     </div>
 </template>

@@ -17,7 +17,16 @@ export default {
         warning: 'Warning',
         error: 'An error occurred',
         success: 'Success',
-        book: 'Book'
+        book: 'Book',
+        days: {
+            sun: 'Sunday',
+            mon: 'Monday',
+            tue: 'Tuesday',
+            wed: 'Wednesday',
+            thu: 'Thursday',
+            fri: 'Friday',
+            sat: 'Saturday'
+        }
     },
     home: {
         title: 'Barbershop Appointment System',
@@ -63,6 +72,8 @@ export default {
     admin: {
         appointments: 'Appointments',
         stylists: 'Stylists',
+        personalSettings: 'Personal Settings',
+        stylistRole: 'Stylist',
         schedule: 'Schedule',
         addStylist: 'Add New Stylist',
         name: 'Name',
@@ -87,6 +98,14 @@ export default {
         appointmentDetails: 'Appointment Details',
         cancelAppointmentConfirm: 'Are you sure you want to cancel this appointment?',
         appointmentCanceled: 'Appointment canceled',
+        allStylists: 'All Stylists',
+        filterByRole: 'Filter by Role',
+        allRoles: 'All Roles',
+        customerCard: 'Customer Card',
+        cardUpdated: 'Customer Card Updated',
+        content: 'Notes',
+        contentPlaceholder: 'Enter customer preferences or notes...',
+        imageUrlPlaceholder: 'Enter Image URL (Optional)',
         customerName: 'Customer Name',
         customerPhone: 'Customer Phone',
         appointmentTime: 'Appointment Time',
@@ -125,10 +144,15 @@ export default {
         storeClosedAdded: 'Store Closed schedule added',
         scheduleDetails: 'Schedule Details',
         scheduleUpdated: 'Schedule updated',
-        settings: 'System Settings',
+        settings: 'Business Hours & Off Days',
         businessHours: 'Business Hours',
         businessHoursStart: 'Start Time',
-        businessHoursEnd: 'End Time'
+        businessHoursEnd: 'End Time',
+        weeklyOffDay: 'Weekly Off Day',
+        selectOffDay: 'Select Off Day',
+        storeClosed: 'Store Closed (Public Holidays / Maintenance)',
+        addStoreClosed: 'Add Store Closed Period',
+        storeClosedDescription: 'Set dates when the entire store is closed (e.g., Public Holidays, Store Maintenance).'
     },
     register: {
         title: 'Complete Profile',

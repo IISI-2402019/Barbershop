@@ -25,84 +25,105 @@ public class LineNotificationService {
     private MessagingApiClient messagingApiClient;
 
     public void sendBookingSuccess(Appointment appointment) {
-        if (messagingApiClient == null) return;
-        
+        if (messagingApiClient == null)
+            return;
+
         User user = appointment.getCustomer();
         String message = String.format("""
-            預約成功！
-            
-            時間: %s
-            設計師: %s
-            服務內容: %s
-            
-            期待您的光臨！""",
-            appointment.getStartTime().format(FORMATTER),
-            appointment.getStylist().getName(),
-            appointment.getService().getName()
-        );
+                預約成功！
+
+                時間: %s
+                設計師: %s
+                服務內容: %s
+
+                期待您的光臨！""",
+                appointment.getStartTime().format(FORMATTER),
+                appointment.getStylist().getName(),
+                appointment.getService().getName());
         sendPushMessage(user.getLineUserId(), message);
     }
-    
+
+    public void sendAppointmentUpdateNotification(Appointment appointment) {
+        if (messagingApiClient == null)
+            return;
+
+        User user = appointment.getCustomer();
+        String message = String.format("""
+                您的預約時間已異動！
+
+                設計師：%s
+                服務項目：%s
+                新時間：%s
+
+                若有疑問請聯繫店家，謝謝！""",
+                appointment.getStylist().getName(),
+                appointment.getService().getName(),
+                appointment.getStartTime().format(FORMATTER));
+        sendPushMessage(user.getLineUserId(), message);
+    }
+
     public void sendCycleReminder(User user) {
-        if (messagingApiClient == null) return;
-        
+        if (messagingApiClient == null)
+            return;
+
         String msg = String.format("""
-            親愛的 %s 您好:
-            
-            距離您上次理髮已經過了一段時間，是不是該回來整理一下頭髮了呢？
-            期待為您服務！
-            """,
-            user.getRealName() != null ? user.getRealName() : user.getDisplayName()
-        );
+                親愛的 %s 您好:
+
+                距離您上次理髮已經過了一段時間，是不是該回來整理一下頭髮了呢？
+                期待為您服務！
+                """,
+                user.getRealName() != null ? user.getRealName() : user.getDisplayName());
         sendPushMessage(user.getLineUserId(), msg);
     }
 
     public void sendAppointmentCancelled(Appointment appointment) {
-        if (messagingApiClient == null) return;
+        if (messagingApiClient == null)
+            return;
 
         User user = appointment.getCustomer();
         String message = String.format("您的預約: %s 已被取消。",
-            appointment.getStartTime().format(FORMATTER)
-        );
+                appointment.getStartTime().format(FORMATTER));
         sendPushMessage(user.getLineUserId(), message);
     }
 
     public void sendAppointmentReminder(Appointment appointment) {
-        if (messagingApiClient == null) return;
+        if (messagingApiClient == null)
+            return;
 
         User user = appointment.getCustomer();
         String message = String.format("""
-            【預約提醒】
-            
-            提醒您，您明日有理髮預約。
-            時間: %s
-            設計師: %s
-            服務: %s
-            
-            若需變更(當日)，請提前致電告知。""",
-            appointment.getStartTime().format(FORMATTER),
-            appointment.getStylist().getName(),
-            appointment.getService().getName()
-        );
+                【預約提醒】
+
+                提醒您，您明日有理髮預約。
+                時間: %s
+                設計師: %s
+                服務: %s
+
+                若需變更(當日)，請提前致電告知。""",
+                appointment.getStartTime().format(FORMATTER),
+                appointment.getStylist().getName(),
+                appointment.getService().getName());
         sendPushMessage(user.getLineUserId(), message);
     }
 
     private void sendPushMessage(String userId, String text) {
-        if (userId == null || userId.isEmpty()) return;
+        if (userId == null || userId.isEmpty())
+            return;
 
         try {
             // In SDK 8.x, TextMessage takes a text string
-            // PushMessageRequest takes (to, List<Message>, notificationDisabled, customAggregationUnits)
-            // Or simpler constructor: (to, List<Message>) -- actually check builder or constructor
-            
+            // PushMessageRequest takes (to, List<Message>, notificationDisabled,
+            // customAggregationUnits)
+            // Or simpler constructor: (to, List<Message>) -- actually check builder or
+            // constructor
+
             // Using UUID for idempotency key if needed, or just standard call
-            
+
             PushMessageRequest request = new PushMessageRequest(
-                userId,
-                List.of(new TextMessage(text)),
-                false,
-                null
-            );
+                    userId,
+                    List.of(new TextMessage(text)),
+                    false,
+                    null);
 
             messagingApiClient.pushMessage(UUID.randomUUID(), request).get();
             logger.info("Sent LINE message to {}", userId);
