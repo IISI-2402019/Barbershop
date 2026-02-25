@@ -6,7 +6,7 @@
                 <div class="appointment-controls" style="margin-bottom: 20px;">
                     <el-select v-model="filterStylistId" :placeholder="$t('admin.selectStylist')"
                         style="margin-right: 10px; width: 200px;" clearable @change="fetchAppointments"
-                        class="filter-item">
+                        class="filter-item" :loading="loadingAppointments">
                         <el-option :label="$t('admin.allStylists')" :value="null" />
                         <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
                     </el-select>
@@ -16,9 +16,11 @@
                     <el-date-picker v-model="exportEndDate" type="datetime" :placeholder="$t('admin.endDate')"
                         style="margin-right: 10px;" class="date-picker-item" />
                     <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel')
-                        }}</el-button>
+                    }}</el-button>
                 </div>
-                <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
+                <div v-loading="loadingAppointments">
+                    <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
+                </div>
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.personalSettings')" name="personal"
                 v-if="userStore.dbUser?.role === 'STYLIST'">
@@ -52,7 +54,7 @@
                 <div class="schedule-management">
                     <div class="schedule-controls" style="margin-bottom: 20px;">
                         <el-button type="primary" @click="openAddScheduleDialog">{{ $t('admin.addSchedule')
-                        }}</el-button>
+                            }}</el-button>
                     </div>
                     <FullCalendar ref="scheduleCalendarRef" :options="scheduleCalendarOptions" />
                 </div>
@@ -69,14 +71,14 @@
                         </el-form-item>
                         <el-form-item>
                             <el-checkbox v-model="newService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                                }}</el-checkbox>
+                            }}</el-checkbox>
                         </el-form-item>
                         <el-form-item :label="$t('admin.serviceDuration')">
                             <el-input-number v-model="newService.durationHours" :step="0.5" :min="0.5" />
                         </el-form-item>
                         <el-form-item>
                             <el-button type="primary" @click="addService" :loading="loadingService">{{ $t('common.add')
-                                }}</el-button>
+                            }}</el-button>
                         </el-form-item>
                     </el-form>
 
@@ -97,7 +99,7 @@
                                 <div class="action-buttons">
                                     <el-button size="small" @click="openEditServiceDialog(scope.row)">{{
                                         $t('common.edit')
-                                        }}</el-button>
+                                    }}</el-button>
                                     <el-button size="small" type="danger" @click="deleteService(scope.row.id)">{{
                                         $t('common.delete') }}</el-button>
                                 </div>
@@ -160,7 +162,7 @@
                         </el-form-item>
                         <el-form-item :label="$t('admin.weeklyOffDay')">
                             <el-select v-model="settingsForm.weekly_off_day" :placeholder="$t('admin.selectOffDay')"
-                                clearable>
+                                multiple clearable style="width: 100%;" popper-class="weekly-off-select-dropdown">
                                 <el-option :label="$t('common.days.sun')" value="0" />
                                 <el-option :label="$t('common.days.mon')" value="1" />
                                 <el-option :label="$t('common.days.tue')" value="2" />
@@ -173,7 +175,7 @@
                         <el-form-item>
                             <el-button type="primary" @click="saveSettings" :loading="loadingSettings">{{
                                 $t('common.save')
-                                }}</el-button>
+                            }}</el-button>
                         </el-form-item>
                     </el-form>
 
@@ -182,7 +184,7 @@
                     <div class="store-closed-management">
                         <h3>{{ $t('admin.storeClosed') }}</h3>
                         <el-button type="danger" @click="openStoreClosedDialog">{{ $t('admin.addStoreClosed')
-                            }}</el-button>
+                        }}</el-button>
                     </div>
                 </div>
             </el-tab-pane>
@@ -199,7 +201,7 @@
                 </el-form-item>
                 <el-form-item>
                     <el-checkbox v-model="editingService.isPriceStartingFrom">{{ $t('admin.priceStartingFrom')
-                        }}</el-checkbox>
+                    }}</el-checkbox>
                 </el-form-item>
                 <el-form-item :label="$t('admin.serviceDuration')">
                     <el-input-number v-model="editingService.durationHours" :step="0.5" :min="0.5" />
@@ -209,25 +211,57 @@
                 <span class="dialog-footer">
                     <el-button @click="editServiceDialogVisible = false">{{ $t('common.cancel') }}</el-button>
                     <el-button type="primary" @click="updateService" :loading="loadingService">{{ $t('common.save')
-                        }}</el-button>
+                    }}</el-button>
                 </span>
             </template>
         </el-dialog>
 
         <!-- Add Schedule Dialog -->
-        <el-dialog v-model="addScheduleDialogVisible" :title="$t('admin.addSchedule')">
-            <el-form :model="newSchedule">
+        <el-dialog v-model="addScheduleDialogVisible" :title="$t('admin.addSchedule')" width="90%"
+            class="responsive-dialog">
+            <el-form :model="newSchedule" label-position="top">
                 <el-form-item :label="$t('admin.stylist')">
-                    <el-select v-model="newSchedule.stylistId" :placeholder="$t('admin.selectStylist')">
+                    <el-select v-model="newSchedule.stylistId" :placeholder="$t('admin.selectStylist')"
+                        style="width: 100%;">
                         <el-option v-for="stylist in stylists" :key="stylist.id" :label="stylist.name"
                             :value="stylist.id" />
                     </el-select>
                 </el-form-item>
-                <el-form-item :label="$t('admin.dateRange')">
-                    <el-date-picker v-model="newSchedule.dateRange" type="datetimerange"
-                        :range-separator="$t('admin.to')" :start-placeholder="$t('admin.startDate')"
-                        :end-placeholder="$t('admin.endDate')" format="YYYY-MM-DD HH:mm" />
-                </el-form-item>
+
+                <div class="schedule-datetime-group">
+                    <div class="group-label">{{ $t('admin.startTime') }}</div>
+                    <div class="datetime-row">
+                        <el-form-item style="flex: 3; margin-bottom: 0;">
+                            <el-date-picker v-model="newSchedule.startDate" type="date"
+                                :placeholder="$t('admin.startDate')" style="width: 100%;" format="YYYY-MM-DD"
+                                value-format="YYYY-MM-DD" :default-value="new Date()" />
+                        </el-form-item>
+                        <el-form-item style="flex: 2; margin-bottom: 0;">
+                            <el-select v-model="newSchedule.startTimeStr" :placeholder="$t('booking.time')"
+                                style="width: 100%;">
+                                <el-option v-for="t in timeOptions" :key="t" :label="t" :value="t" />
+                            </el-select>
+                        </el-form-item>
+                    </div>
+                </div>
+
+                <div class="schedule-datetime-group" style="margin-top: 15px;">
+                    <div class="group-label">{{ $t('admin.endTime') }}</div>
+                    <div class="datetime-row">
+                        <el-form-item style="flex: 3; margin-bottom: 0;">
+                            <el-date-picker v-model="newSchedule.endDate" type="date" :placeholder="$t('admin.endDate')"
+                                style="width: 100%;" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
+                                :default-value="new Date()" />
+                        </el-form-item>
+                        <el-form-item style="flex: 2; margin-bottom: 0;">
+                            <el-select v-model="newSchedule.endTimeStr" :placeholder="$t('booking.time')"
+                                style="width: 100%;">
+                                <el-option v-for="t in timeOptions" :key="t" :label="t" :value="t" />
+                            </el-select>
+                        </el-form-item>
+                    </div>
+                </div>
+
                 <el-form-item :label="$t('admin.reason')">
                     <el-input v-model="newSchedule.reason" :placeholder="$t('admin.reasonPlaceholder')" />
                 </el-form-item>
@@ -256,7 +290,7 @@
                     <el-button @click="storeClosedDialogVisible = false">{{ $t('common.cancel') }}</el-button>
                     <el-button type="primary" @click="addStoreClosedSchedule" :loading="loadingStoreClosed">{{
                         isEditingSchedule ? $t('common.save') :
-                        $t('common.add') }}</el-button>
+                            $t('common.add') }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -265,7 +299,7 @@
         <el-dialog v-model="scheduleDetailVisible" :title="$t('admin.scheduleDetails')" width="400px">
             <div v-if="selectedSchedule">
                 <p><strong>{{ selectedSchedule.isStoreClosed ? $t('admin.storeClosed') : $t('admin.stylist')
-                        }}:</strong>
+                }}:</strong>
                     {{ selectedSchedule.isStoreClosed ? '' : selectedSchedule.stylistName }}
                 </p>
                 <p><strong>{{ $t('admin.dateRange') }}:</strong><br />
@@ -277,7 +311,7 @@
                 <span class="dialog-footer">
                     <el-button type="primary" @click="openEditSchedule"
                         v-if="userStore.dbUser?.role === 'ADMIN' || (selectedSchedule.stylistUserId && userStore.dbUser?.id === selectedSchedule.stylistUserId)">{{
-                        $t('common.edit') }}</el-button>
+                            $t('common.edit') }}</el-button>
                     <el-button type="danger" @click="deleteSchedule"
                         v-if="userStore.dbUser?.role === 'ADMIN' || (selectedSchedule.stylistUserId && userStore.dbUser?.id === selectedSchedule.stylistUserId)">{{
                             $t('common.delete') }}</el-button>
@@ -307,7 +341,7 @@
                 <span class="dialog-footer">
                     <el-button @click="editDialogVisible = false">{{ $t('common.cancel') }}</el-button>
                     <el-button type="primary" @click="updateStylist" :loading="loadingStylist">{{ $t('common.save')
-                        }}</el-button>
+                    }}</el-button>
                 </span>
             </template>
         </el-dialog>
@@ -463,6 +497,7 @@ const filterStylistId = ref(null) // Stylist Filter for Appointments
 const filterRole = ref(null) // Role Filter for Users
 const userList = ref([])
 const loadingUsers = ref(false)
+const loadingAppointments = ref(false) // Add loading state
 
 // Customer Card State
 const customerCardDialogVisible = ref(false)
@@ -505,7 +540,10 @@ const addScheduleDialogVisible = ref(false)
 const storeClosedDialogVisible = ref(false)
 const newSchedule = ref({
     stylistId: null,
-    dateRange: [],
+    startDate: '',    // Changed: Need start date
+    endDate: '',      // Changed: Need end date
+    startTimeStr: '',
+    endTimeStr: '',
     isAllDay: false,
     reason: ''
 })
@@ -571,9 +609,17 @@ const openEditSchedule = () => {
         }
         storeClosedDialogVisible.value = true
     } else {
+        generateTimeOptions() // Ensure time options are ready
+        // Convert to local time components strings
+        const startISO = toLocalISOString(start)
+        const endISO = toLocalISOString(end)
+
         newSchedule.value = {
             stylistId: selectedSchedule.value.stylistId,
-            dateRange: [start, end],
+            startDate: startISO.split('T')[0],
+            startTimeStr: startISO.split('T')[1].slice(0, 5),
+            endDate: endISO.split('T')[0],
+            endTimeStr: endISO.split('T')[1].slice(0, 5),
             isAllDay: selectedSchedule.value.allDay,
             reason: selectedSchedule.value.reason
         }
@@ -834,14 +880,25 @@ const updateUserRole = async (user) => {
 const settingsForm = ref({
     business_hours_start: '10:00',
     business_hours_end: '20:00',
-    weekly_off_day: null
+    weekly_off_day: []
 })
 
 const fetchSettings = async () => {
     try {
         const res = await axios.get(`${config.apiBaseUrl}/api/settings`)
         if (res.data && Object.keys(res.data).length > 0) {
-            settingsForm.value = { ...settingsForm.value, ...res.data }
+            // Normalize weekly_off_day from string "1,2" to array ["1", "2"]
+            const rawOffDays = res.data.weekly_off_day;
+            let offDaysArray = [];
+            if (rawOffDays) {
+                offDaysArray = rawOffDays.split(',').map(s => s.trim()).filter(s => s !== '');
+            }
+
+            settingsForm.value = {
+                ...res.data,
+                weekly_off_day: offDaysArray
+            }
+
             // Update calendar options
             const start = settingsForm.value.business_hours_start
             const end = settingsForm.value.business_hours_end
@@ -851,9 +908,8 @@ const fetchSettings = async () => {
             scheduleCalendarOptions.value.slotMinTime = start
             scheduleCalendarOptions.value.slotMaxTime = end
 
-            // Update hidden days
-            const weeklyOff = settingsForm.value.weekly_off_day
-            const hiddenDays = (weeklyOff !== null && weeklyOff !== undefined && weeklyOff !== '') ? [parseInt(weeklyOff)] : []
+            // Update hidden days (convert string array to numbers)
+            const hiddenDays = offDaysArray.map(d => parseInt(d));
             calendarOptions.value.hiddenDays = hiddenDays
             scheduleCalendarOptions.value.hiddenDays = hiddenDays
         }
@@ -865,7 +921,15 @@ const fetchSettings = async () => {
 const saveSettings = async () => {
     loadingSettings.value = true
     try {
-        await axios.post(`${config.apiBaseUrl}/api/settings`, settingsForm.value)
+        // Prepare payload: convert array ["1", "2"] back to string "1,2"
+        const payload = {
+            ...settingsForm.value,
+            weekly_off_day: Array.isArray(settingsForm.value.weekly_off_day)
+                ? settingsForm.value.weekly_off_day.join(',')
+                : ''
+        };
+
+        await axios.post(`${config.apiBaseUrl}/api/settings`, payload)
         ElMessage.success(t('common.success'))
         const start = settingsForm.value.business_hours_start
         const end = settingsForm.value.business_hours_end
@@ -876,11 +940,13 @@ const saveSettings = async () => {
         scheduleCalendarOptions.value.slotMaxTime = end
 
         // Update hidden days
-        const weeklyOff = settingsForm.value.weekly_off_day
-        const hiddenDays = (weeklyOff !== null && weeklyOff !== undefined && weeklyOff !== '') ? [parseInt(weeklyOff)] : []
+        const offDaysArray = settingsForm.value.weekly_off_day || [];
+        const hiddenDays = offDaysArray.map(d => parseInt(d));
+
         calendarOptions.value.hiddenDays = hiddenDays
         scheduleCalendarOptions.value.hiddenDays = hiddenDays
     } catch (e) {
+        console.error(e)
         ElMessage.error(t('common.error'))
     } finally {
         loadingSettings.value = false
@@ -1020,6 +1086,7 @@ const openAddScheduleDialog = () => {
         isAllDay: false,
         reason: ''
     }
+    generateTimeOptions() // Ensure options are ready
     addScheduleDialogVisible.value = true
 }
 
@@ -1077,20 +1144,28 @@ const addStoreClosedSchedule = async () => {
 }
 
 const addSchedule = async () => {
-    if (!newSchedule.value.stylistId || !newSchedule.value.dateRange || newSchedule.value.dateRange.length !== 2) {
+    // Validation for separate fields
+    if (!newSchedule.value.stylistId || !newSchedule.value.startDate || !newSchedule.value.startTimeStr || !newSchedule.value.endDate || !newSchedule.value.endTimeStr) {
         ElMessage.warning(t('admin.fillAllFields'))
         return
     }
 
-    let start = newSchedule.value.dateRange[0]
-    let end = newSchedule.value.dateRange[1]
+    // Combine date and time to ISO format (Strings)
+    const startISO = `${newSchedule.value.startDate}T${newSchedule.value.startTimeStr}:00`
+    const endISO = `${newSchedule.value.endDate}T${newSchedule.value.endTimeStr}:00`
+
+    // Validate logic: Start must be before End
+    if (new Date(startISO) >= new Date(endISO)) {
+        ElMessage.warning(t('admin.startTimeAfterEnd'))
+        return
+    }
 
     loadingSchedule.value = true
     try {
         const payload = {
             stylistId: newSchedule.value.stylistId,
-            startTime: toLocalISOString(start),
-            endTime: toLocalISOString(end),
+            startTime: startISO,
+            endTime: endISO,
             isAllDay: false,
             reason: newSchedule.value.reason
         }
@@ -1114,6 +1189,7 @@ const addSchedule = async () => {
 }
 
 const fetchAppointments = async () => {
+    loadingAppointments.value = true
     try {
         const params = {}
         if (filterStylistId.value) {
@@ -1143,6 +1219,8 @@ const fetchAppointments = async () => {
         calendarOptions.value.events = events
     } catch (error) {
         console.error('Failed to fetch appointments', error)
+    } finally {
+        loadingAppointments.value = false
     }
 }
 
@@ -1425,9 +1503,54 @@ const saveCustomerCard = async () => {
 }
 </script>
 
+
+<style>
+/* Allow the options to be more visible and structured in dropdown */
+.weekly-off-select-dropdown .el-select-dropdown__item {
+    font-size: 16px;
+    padding: 10px 20px;
+    font-weight: 500;
+}
+
+.weekly-off-select-dropdown .el-select-dropdown__item.selected {
+    color: var(--color-primary);
+    background-color: #f0f9eb;
+    font-weight: bold;
+}
+</style>
+
 <style scoped>
 .admin-container {
     padding: 20px;
+}
+
+.time-selection-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 0px;
+    /* el-form-item already has margin */
+}
+
+.schedule-datetime-group {
+    margin-bottom: 10px;
+}
+
+.group-label {
+    font-size: 14px;
+    color: #606266;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.datetime-row {
+    display: flex;
+    gap: 10px;
+}
+
+@media (max-width: 480px) {
+    .responsive-dialog {
+        width: 100% !important;
+    }
 }
 
 @media (max-width: 480px) {

@@ -1,6 +1,10 @@
 <template>
     <div class="home">
-        <img :src="logoEntry" class="logo" alt="Barbershop Logo" />
+        <!-- Logo removed, now in Header -->
+        <div class="welcome-section">
+            <h1 class="welcome-title">{{ $t('home.heroTitle') }}</h1>
+            <p class="welcome-subtitle">{{ $t('home.heroSubtitle') }}</p>
+        </div>
 
         <div v-if="userStore.isLoggedIn" class="user-info">
             <p>{{ $t('home.welcome', { name: userStore.profile?.displayName }) }}</p>
@@ -53,7 +57,6 @@
 import { ref } from 'vue'
 import { useUserStore } from '../stores/user'
 import liff from '@line/liff'
-import logoEntry from '../assets/bbs.png'
 import { Calendar, User, Setting, EditPen } from '@element-plus/icons-vue'
 
 const userStore = useUserStore()
@@ -80,16 +83,30 @@ const manualLogin = () => {
     align-items: center;
 }
 
+.welcome-section {
+    margin-bottom: 20px;
+}
+
+.welcome-title {
+    font-size: 1.6rem;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.welcome-subtitle {
+    font-size: 0.8rem;
+    color: #666;
+}
+
 @media (max-width: 480px) {
     .home {
         padding: 30px 20px;
     }
-}
 
-.logo {
-    max-width: 300px;
-    margin-bottom: 30px;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    .welcome-title {
+        font-size: 2rem;
+    }
 }
 
 .actions {
@@ -139,6 +156,39 @@ const manualLogin = () => {
     white-space: normal;
     line-height: 1.4;
     letter-spacing: 0.02em;
+}
+
+/* Desktop sizing overrides */
+@media (min-width: 769px) {
+    .welcome-title {
+        font-size: 3.5rem;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.5rem;
+    }
+
+    .home-btn {
+        width: 220px;
+        height: 220px;
+    }
+
+    .btn-content span {
+        font-size: 1.5rem !important;
+        /* Force override */
+        margin-top: 10px;
+    }
+
+    .btn-content .el-icon {
+        font-size: 60px !important;
+        width: 60px;
+        height: 60px;
+    }
+
+    .btn-content .el-icon svg {
+        width: 60px;
+        height: 60px;
+    }
 }
 
 /* Custom Button Colors for Soft Theme */

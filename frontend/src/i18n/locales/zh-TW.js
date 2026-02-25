@@ -30,6 +30,8 @@ export default {
     },
     home: {
         title: '理髮店預約系統',
+        heroTitle: '歡迎來到 BBS 預約平台',
+        heroSubtitle: '專業的理髮服務，輕鬆預約您的專屬設計師。',
         welcome: '歡迎, {name}',
         bookNow: '立即預約',
         myAppointments: '我的預約',
@@ -90,6 +92,9 @@ export default {
         editStylist: '編輯設計師',
         scheduleComingSoon: '排班管理功能即將推出...',
         exportExcel: '匯出 Excel',
+        startTime: '開始時間',
+        endTime: '結束時間',
+        startTimeAfterEnd: '開始時間不能晚於結束時間',
         startDate: '開始日期',
         endDate: '結束日期',
         to: '至',
