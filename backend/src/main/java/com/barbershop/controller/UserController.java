@@ -49,30 +49,6 @@ public class UserController {
         return ResponseEntity.ok(userRepository.findAll());
     }
 
-    @PutMapping("/{id}/card")
-    public ResponseEntity<?> updateCustomerCard(@PathVariable Long id,
-            @RequestBody java.util.Map<String, Object> payload) {
-        return userRepository.findById(id).map(user -> {
-            if (payload.containsKey("content")) {
-                user.setCustomerCardContent((String) payload.get("content"));
-            }
-            if (payload.containsKey("images")) {
-                try {
-                    List<?> imagesRaw = (List<?>) payload.get("images");
-                    // Simple serialization without full ObjectMapper object if needed, but we
-                    // imported it.
-                    // Let's us ObjectMapper for safety.
-                    String json = new ObjectMapper().writeValueAsString(imagesRaw);
-                    user.setCustomerCardImages(json);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            userRepository.save(user);
-            return ResponseEntity.ok(user);
-        }).orElse(ResponseEntity.notFound().build());
-    }
-
     @PutMapping("/{id}/role")
     public ResponseEntity<?> updateUserRole(@PathVariable Long id, @RequestBody java.util.Map<String, String> payload) {
         String roleStr = payload.get("role");

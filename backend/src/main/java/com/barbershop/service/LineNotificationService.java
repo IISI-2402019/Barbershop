@@ -105,6 +105,19 @@ public class LineNotificationService {
                 appointment.getService().getName());
         sendPushMessage(user.getLineUserId(), message);
     }
+    
+    public void sendBookingPeriodOpen(User user, int month) {
+        if (messagingApiClient == null)
+            return;
+        
+        // Use Chinese numbers or simple Arabic? User prompt uses "三月" (3月)
+        String monthStr = month + "月";
+
+        String message = String.format("""
+%s已開放預約
+需要整理頭髮的朋友可以提前預約囉～""", monthStr);
+        sendPushMessage(user.getLineUserId(), message);
+    }
 
     private void sendPushMessage(String userId, String text) {
         if (userId == null || userId.isEmpty())

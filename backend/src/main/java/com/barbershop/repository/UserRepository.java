@@ -19,4 +19,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRealNameContainingIgnoreCaseAndRole(String realName, UserRole role);
 
     List<User> findByReminderCycleIsNotNull();
+
+    // Find users who have lineUserId set (for push notifications)
+    List<User> findByLineUserIdIsNotNull();
 }

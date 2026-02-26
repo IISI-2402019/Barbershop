@@ -26,12 +26,6 @@ public class User {
     @Column(nullable = false)
     private UserRole role;
 
-    @Column(name = "customer_card_content", columnDefinition = "TEXT")
-    private String customerCardContent;
-
-    @Column(name = "customer_card_images", columnDefinition = "TEXT")
-    private String customerCardImages;
-
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -100,22 +94,6 @@ public class User {
 
     public void setRole(UserRole role) {
         this.role = role;
-    }
-
-    public String getCustomerCardContent() {
-        return customerCardContent;
-    }
-
-    public void setCustomerCardContent(String customerCardContent) {
-        this.customerCardContent = customerCardContent;
-    }
-
-    public String getCustomerCardImages() {
-        return customerCardImages;
-    }
-
-    public void setCustomerCardImages(String customerCardImages) {
-        this.customerCardImages = customerCardImages;
     }
 
     public Integer getReminderCycle() {

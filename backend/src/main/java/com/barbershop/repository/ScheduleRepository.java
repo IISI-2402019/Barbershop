@@ -17,4 +17,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     // schedule.startTime < end AND schedule.endTime > start
     @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE (s.stylist.id = :stylistId OR s.stylist IS NULL) AND s.startTime < :end AND s.endTime > :start")
     List<Schedule> findOverlappingSchedules(Long stylistId, LocalDateTime end, LocalDateTime start);
+
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE (s.stylist.id = :stylistId OR s.stylist IS NULL) AND s.isAllDay = true AND s.startTime >= :start")
+    List<Schedule> findFutureUnavailableSchedules(Long stylistId, LocalDateTime start);
 }

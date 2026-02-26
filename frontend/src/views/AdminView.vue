@@ -2,6 +2,44 @@
     <div class="admin-container">
         <h2>{{ $t('home.adminDashboard') }}</h2>
         <el-tabs v-model="activeTab">
+            <el-tab-pane :label="$t('admin.customerCardTab')" name="customerCards">
+                <div class="customer-card-management">
+                    <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <el-select v-model="customerCardUserId" filterable :placeholder="$t('admin.searchCustomer')"
+                            style="width: 250px;" @change="fetchCustomerCards">
+                            <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                                :value="u.id" />
+                        </el-select>
+                        <el-button type="primary" @click="fetchCustomerCards" :disabled="!customerCardUserId">{{
+                            $t('common.search') }}</el-button>
+                        <el-button type="success" @click="openNewCustomerCardDialog">{{ $t('common.add') }}</el-button>
+                    </div>
+                    <el-table :data="sortedCustomerCards" style="width: 100%" v-loading="loadingCustomerCards">
+                        <el-table-column prop="cardDate" :label="$t('admin.cardDate')" min-width="120">
+                            <template #default="scope">{{ scope.row.cardDate ? new
+                                Date(scope.row.cardDate).toLocaleDateString() : '' }}</template>
+                        </el-table-column>
+                        <el-table-column prop="content" :label="$t('admin.content')" min-width="200"
+                            show-overflow-tooltip />
+                        <el-table-column :label="$t('admin.images')" min-width="100">
+                            <template #default="scope">
+                                <el-button size="small" @click="viewCardImages(scope.row)"
+                                    v-if="scope.row.images && scope.row.images !== '[]'">
+                                    {{ $t('admin.viewImages') }}
+                                </el-button>
+                            </template>
+                        </el-table-column>
+                        <el-table-column :label="$t('admin.actions')" min-width="120">
+                            <template #default="scope">
+                                <el-button size="small" @click="editCustomerCard(scope.row)">{{ $t('admin.edit')
+                                    }}</el-button>
+                                <el-button size="small" type="danger" @click="deleteCustomerCard(scope.row.id)">{{
+                                    $t('common.delete') }}</el-button>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+            </el-tab-pane>
             <el-tab-pane :label="$t('admin.appointments')" name="appointments">
                 <div class="appointment-controls" style="margin-bottom: 20px;">
                     <el-select v-model="filterStylistId" :placeholder="$t('admin.selectStylist')"
@@ -10,11 +48,8 @@
                         <el-option :label="$t('admin.allStylists')" :value="null" />
                         <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
                     </el-select>
-                    <el-date-picker v-model="exportStartDate" type="datetime" :placeholder="$t('admin.startDate')"
-                        style="margin-right: 5px;" class="date-picker-item" />
-                    <span class="date-separator">{{ $t('admin.to') }}</span>
-                    <el-date-picker v-model="exportEndDate" type="datetime" :placeholder="$t('admin.endDate')"
-                        style="margin-right: 10px;" class="date-picker-item" />
+                    <el-date-picker v-model="exportDate" type="date" :placeholder="$t('admin.selectDate')"
+                        style="margin-right: 10px;" class="date-picker-item" format="YYYY-MM-DD" :clearable="false" />
                     <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel')
                     }}</el-button>
                 </div>
@@ -35,7 +70,8 @@
                         </el-form-item>
                         <el-form-item :label="$t('admin.image')">
                             <el-upload class="avatar-uploader" :action="uploadUrl" :show-file-list="false"
-                                :on-success="handlePersonalAvatarSuccess" :before-upload="beforeAvatarUpload">
+                                :on-success="handlePersonalAvatarSuccess" :before-upload="beforeAvatarUpload"
+                                accept="image/*">
                                 <img v-if="currentStylistProfile.avatarUrl"
                                     :src="getFullImageUrl(currentStylistProfile.avatarUrl)" class="avatar" />
                                 <el-icon v-else class="avatar-uploader-icon">
@@ -45,7 +81,8 @@
                         </el-form-item>
                         <el-form-item>
                             <el-button type="primary" @click="updatePersonalProfile"
-                                :loading="loadingPersonalProfile">{{ $t('common.save') }}</el-button>
+                                :loading="loadingPersonalProfile">{{
+                                    $t('common.save') }}</el-button>
                         </el-form-item>
                     </el-form>
                 </div>
@@ -136,14 +173,10 @@
                                 </el-select>
                             </template>
                         </el-table-column>
-                        <el-table-column :label="$t('admin.actions')" min-width="150">
+                        <!-- <el-table-column :label="$t('admin.actions')" min-width="150">
                             <template #default="scope">
-                                <el-button size="small" @click="openCustomerCard(scope.row)"
-                                    v-if="scope.row.role === 'CUSTOMER'">
-                                    {{ $t('admin.customerCard') }}
-                                </el-button>
                             </template>
-                        </el-table-column>
+                        </el-table-column> -->
                     </el-table>
                 </div>
             </el-tab-pane>
@@ -171,6 +204,28 @@
                                 <el-option :label="$t('common.days.fri')" value="5" />
                                 <el-option :label="$t('common.days.sat')" value="6" />
                             </el-select>
+                        </el-form-item>
+                        <el-form-item :label="$t('admin.maxBookingDate')">
+                            <div class="booking-control-group">
+                                <div class="current-limit" v-if="settingsForm.max_booking_date">
+                                    {{ $t('admin.currentBookingLimit') }}: <strong>{{
+                                        formatMonthDisplay(settingsForm.max_booking_date) }}</strong>
+                                </div>
+                                <div class="current-limit" v-else>
+                                    {{ $t('admin.noBookingLimit') }}
+                                </div>
+
+                                <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                                    <span style="white-space: nowrap;">{{ $t('admin.openBookingTo') }}:</span>
+                                    <el-date-picker v-model="selectedOpenMonth" type="month"
+                                        :placeholder="$t('admin.selectMonth')" style="width: 150px;" format="YYYY-MM"
+                                        value-format="YYYY-MM" @change="applyBookingMonth" />
+                                    <el-button type="warning" size="small" @click="resetBookingLimit">
+                                        {{ $t('admin.resetLimit') }}
+                                    </el-button>
+                                </div>
+                                <div class="time-hint">{{ $t('admin.openNextMonthHint') }}</div>
+                            </div>
                         </el-form-item>
                         <el-form-item>
                             <el-button type="primary" @click="saveSettings" :loading="loadingSettings">{{
@@ -230,35 +285,37 @@
 
                 <div class="schedule-datetime-group">
                     <div class="group-label">{{ $t('admin.startTime') }}</div>
-                    <div class="datetime-row">
-                        <el-form-item style="flex: 3; margin-bottom: 0;">
+                    <div class="datetime-row" style="display: flex; gap: 10px; align-items: center;">
+                        <el-form-item style="margin-bottom: 0; width: 150px;">
                             <el-date-picker v-model="newSchedule.startDate" type="date"
                                 :placeholder="$t('admin.startDate')" style="width: 100%;" format="YYYY-MM-DD"
                                 value-format="YYYY-MM-DD" :default-value="new Date()" />
                         </el-form-item>
-                        <el-form-item style="flex: 2; margin-bottom: 0;">
+                        <el-form-item style="margin-bottom: 0; width: 120px;">
                             <el-select v-model="newSchedule.startTimeStr" :placeholder="$t('booking.time')"
-                                style="width: 100%;">
+                                style="width: 100%;" clearable>
                                 <el-option v-for="t in timeOptions" :key="t" :label="t" :value="t" />
                             </el-select>
                         </el-form-item>
+                        <div class="time-hint-inline">{{ $t('admin.leaveTimeBlankForAllDay') }}</div>
                     </div>
                 </div>
 
-                <div class="schedule-datetime-group" style="margin-top: 15px;">
+                <div class="schedule-datetime-group" style="margin-top: 20px;">
                     <div class="group-label">{{ $t('admin.endTime') }}</div>
-                    <div class="datetime-row">
-                        <el-form-item style="flex: 3; margin-bottom: 0;">
+                    <div class="datetime-row" style="display: flex; gap: 10px; align-items: center;">
+                        <el-form-item style="margin-bottom: 0; width: 150px;">
                             <el-date-picker v-model="newSchedule.endDate" type="date" :placeholder="$t('admin.endDate')"
                                 style="width: 100%;" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
                                 :default-value="new Date()" />
                         </el-form-item>
-                        <el-form-item style="flex: 2; margin-bottom: 0;">
+                        <el-form-item style="margin-bottom: 0; width: 120px;">
                             <el-select v-model="newSchedule.endTimeStr" :placeholder="$t('booking.time')"
-                                style="width: 100%;">
+                                style="width: 100%;" clearable>
                                 <el-option v-for="t in timeOptions" :key="t" :label="t" :value="t" />
                             </el-select>
                         </el-form-item>
+                        <div class="time-hint-inline">{{ $t('admin.leaveTimeBlankForAllDay') }}</div>
                     </div>
                 </div>
 
@@ -401,10 +458,22 @@
         </el-dialog>
 
         <!-- Customer Card Dialog -->
-        <el-dialog v-model="customerCardDialogVisible" :title="$t('admin.customerCard')" width="600px">
+        <el-dialog v-model="customerCardDialogVisible" :title="$t('admin.customerCard')" width="90%"
+            style="max-width: 600px;">
             <el-form :model="customerCardForm" label-width="80px">
-                <el-form-item :label="$t('admin.customerName')">
+                <el-form-item :label="$t('admin.customerName')" v-if="!customerCardForm.id">
+                    <el-select v-model="customerCardForm.userId" filterable
+                        :placeholder="$t('admin.selectCustomerPlaceholder')" style="width: 100%">
+                        <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                            :value="u.id" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="$t('admin.customerName')" v-else>
                     <strong>{{ customerCardForm.name }}</strong>
+                </el-form-item>
+                <el-form-item :label="$t('admin.cardDate')">
+                    <el-date-picker v-model="customerCardForm.cardDate" type="date" style="width: 100%"
+                        format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
                 </el-form-item>
                 <el-form-item :label="$t('admin.content')">
                     <el-input v-model="customerCardForm.content" type="textarea" :rows="8"
@@ -413,7 +482,8 @@
                 <el-form-item :label="$t('admin.image')">
                     <el-upload v-model:file-list="customerCardFileList" :action="uploadUrl" list-type="picture-card"
                         :on-success="handleCustomerCardUploadSuccess" :on-remove="handleCustomerCardRemove"
-                        :on-preview="handlePictureCardPreview" :before-upload="beforeAvatarUpload">
+                        :on-preview="handlePictureCardPreview" :before-upload="beforeAvatarUpload" multiple
+                        accept="image/*">
                         <el-icon>
                             <Plus />
                         </el-icon>
@@ -477,6 +547,9 @@ watch(activeTab, async (newTab) => {
         if (services.value.length === 0) await fetchServices()
     } else if (newTab === 'users') {
         await fetchUsers()
+    } else if (newTab === 'customerCards') {
+        fetchCustomerUsers()
+        fetchCustomerCards()
     } else if (newTab === 'personal') {
         if (stylists.value.length === 0) await fetchStylists()
         initPersonalProfile()
@@ -490,8 +563,7 @@ const stylists = ref([])
 const services = ref([])
 const searchQuery = ref('')
 const serviceSearchQuery = ref('')
-const exportStartDate = ref('')
-const exportEndDate = ref('')
+const exportDate = ref(new Date())
 const userSearchQuery = ref('')
 const filterStylistId = ref(null) // Stylist Filter for Appointments
 const filterRole = ref(null) // Role Filter for Users
@@ -504,18 +576,97 @@ const customerCardDialogVisible = ref(false)
 const loadingCustomerCard = ref(false)
 const customerCardForm = ref({
     id: null,
+    userId: null,
     name: '',
     content: '',
-    images: []
+    images: [],
+    cardDate: ''
 })
 const customerCardFileList = ref([])
 const previewVisible = ref(false)
 const previewImageUrl = ref('')
+const customerCardUserId = ref(null)
+const customerUserOptions = ref([])
+const customerCardList = ref([])
+const loadingCustomerCards = ref(false)
+const customerCardImagesVisible = ref(false)
+const currentCardImages = ref([])
+
+const viewCardImages = (row) => {
+    try {
+        const imgs = JSON.parse(row.images)
+        if (Array.isArray(imgs) && imgs.length > 0) {
+            currentCardImages.value = imgs.map(url => getFullImageUrl(url))
+            customerCardImagesVisible.value = true
+        } else {
+            ElMessage.info(t('admin.noImages'))
+        }
+    } catch (e) {
+        ElMessage.error(t('common.error'))
+    }
+}
+
+const sortedCustomerCards = computed(() => {
+    return [...customerCardList.value].sort((a, b) => {
+        const dateA = a.cardDate ? new Date(a.cardDate) : new Date(0)
+        const dateB = b.cardDate ? new Date(b.cardDate) : new Date(0)
+        return dateB - dateA
+    })
+})
+
+const fetchCustomerUsers = async () => {
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/users`, { params: { role: 'CUSTOMER' } })
+        let users = res.data || []
+
+        // Fetch today's appointments to prioritize customers
+        try {
+            const today = new Date()
+            const startStr = new Date(today.setHours(0, 0, 0, 0)).toISOString()
+            const endStr = new Date(today.setHours(23, 59, 59, 999)).toISOString()
+            const apptRes = await axios.get(`${config.apiBaseUrl}/api/appointments`, {
+                params: { start: startStr, end: endStr }
+            })
+            const todayCustomerIds = new Set(apptRes.data.map(a => a.customer?.id))
+
+            users.sort((a, b) => {
+                const aHas = todayCustomerIds.has(a.id)
+                const bHas = todayCustomerIds.has(b.id)
+                if (aHas && !bHas) return -1
+                if (!aHas && bHas) return 1
+                return 0
+            })
+        } catch (ignore) {
+            console.warn('Failed to sort customers by appointment', ignore)
+        }
+
+        customerUserOptions.value = users
+    } catch (e) {
+        customerUserOptions.value = []
+    }
+}
+
+const fetchCustomerCards = async () => {
+    // If no user selected, do not fetch all
+    if (!customerCardUserId.value) {
+        customerCardList.value = []
+        return
+    }
+    loadingCustomerCards.value = true
+    try {
+        let url = `${config.apiBaseUrl}/api/customer-cards/user/${customerCardUserId.value}`
+        const res = await axios.get(url)
+        customerCardList.value = res.data || []
+    } catch (e) {
+        customerCardList.value = []
+        ElMessage.error(t('common.error'))
+    } finally {
+        loadingCustomerCards.value = false
+    }
+}
 
 const handleCustomerCardUploadSuccess = (response, uploadFile) => {
-    // response is { url: '/api/uploads/...' }
-    // We add it to the list (Element Plus handles display, we track URL)
-    // Actually we just need to ensure the fileList is synced for save
+    uploadFile.url = getFullImageUrl(response.url)
 }
 
 const handleCustomerCardRemove = (uploadFile, uploadFiles) => {
@@ -880,7 +1031,8 @@ const updateUserRole = async (user) => {
 const settingsForm = ref({
     business_hours_start: '10:00',
     business_hours_end: '20:00',
-    weekly_off_day: []
+    weekly_off_day: [],
+    max_booking_date: ''
 })
 
 const fetchSettings = async () => {
@@ -912,10 +1064,87 @@ const fetchSettings = async () => {
             const hiddenDays = offDaysArray.map(d => parseInt(d));
             calendarOptions.value.hiddenDays = hiddenDays
             scheduleCalendarOptions.value.hiddenDays = hiddenDays
+
+            // Init selected month for picker based on existing setting
+            if (settingsForm.value.max_booking_date) {
+                // If set to 2023-12-31, picker should show 2023-12
+                const parts = settingsForm.value.max_booking_date.split('-')
+                if (parts.length >= 2) {
+                    selectedOpenMonth.value = `${parts[0]}-${parts[1]}`
+                }
+            }
         }
     } catch (e) {
         console.error('Failed to fetch settings', e)
     }
+}
+
+
+const selectedOpenMonth = ref(null)
+
+const formatMonthDisplay = (dateStr) => {
+    if (!dateStr) return ''
+    // dateStr is YYYY-MM-DD
+    const parts = dateStr.split('-')
+    if (parts.length >= 2) {
+        return `${parts[0]}-${parts[1]}`
+    }
+    return dateStr
+}
+
+const applyBookingMonth = async () => {
+    if (!selectedOpenMonth.value) return
+
+    const d = new Date(selectedOpenMonth.value)
+    // Find the last day of the selected month
+    const year = d.getFullYear()
+    const month = d.getMonth()
+    const lastDayOfMonth = new Date(year, month + 1, 0)
+
+    // Check if the selected month is before current month
+    const now = new Date()
+    // Compare YYYY-MM
+    if (year < now.getFullYear() || (year === now.getFullYear() && month < now.getMonth())) {
+        ElMessage.error(t('admin.startTimeAfterEnd')) // Using closest error message or generic
+        return
+    }
+
+    const yyyy = lastDayOfMonth.getFullYear()
+    const mm = String(lastDayOfMonth.getMonth() + 1).padStart(2, '0')
+    const dd = String(lastDayOfMonth.getDate()).padStart(2, '0')
+
+    settingsForm.value.max_booking_date = `${yyyy}-${mm}-${dd}`
+
+    await saveSettings()
+
+    const newMonth = lastDayOfMonth.getMonth() + 1
+    if (confirm(t('admin.confirmSendLineNotify', { month: newMonth }))) {
+        try {
+            await axios.post(`${config.apiBaseUrl}/api/settings/notify-open-booking`, { month: newMonth })
+            ElMessage.success(t('admin.lineNotifySuccess'))
+        } catch (e) {
+            console.error(e)
+            ElMessage.error(t('common.error'))
+        }
+    }
+}
+
+const resetBookingLimit = async () => {
+    if (!confirm(t('admin.resetLimitConfirm'))) return
+
+    const now = new Date()
+    // Last day of current month
+    const currentMonthLastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+    // Set selectedOpenMonth to current month so logic follows
+    const yyyy = currentMonthLastDay.getFullYear()
+    const mm = String(currentMonthLastDay.getMonth() + 1).padStart(2, '0')
+    const dd = String(currentMonthLastDay.getDate()).padStart(2, '0')
+
+    settingsForm.value.max_booking_date = `${yyyy}-${mm}-${dd}`
+    selectedOpenMonth.value = `${yyyy}-${mm}`
+
+    await saveSettings()
 }
 
 const saveSettings = async () => {
@@ -1020,6 +1249,8 @@ onMounted(async () => {
 
         // Always fetch appointments for the default tab
         fetchAppointments()
+        fetchCustomerUsers()
+        fetchCustomerCards()
     }
 })
 
@@ -1039,6 +1270,8 @@ watch(() => userStore.dbUser, async (newUser) => {
         if (activeTab.value === 'appointments') {
             fetchAppointments()
         }
+        fetchCustomerUsers()
+        fetchCustomerCards()
     }
 })
 
@@ -1057,20 +1290,35 @@ const fetchSchedules = async () => {
         const response = await axios.get(`${config.apiBaseUrl}/api/schedules`)
         schedules.value = response.data
 
-        const events = response.data.map(sch => ({
-            id: sch.id,
-            title: `${sch.stylist ? sch.stylist.name : t('admin.storeClosed')} - ${sch.reason || t('admin.leave')}`,
-            start: sch.startTime,
-            end: sch.endTime,
-            allDay: sch.isAllDay,
-            color: sch.stylist ? getStylistColor(sch.stylist.name) : '#F56C6C', // Dynamic color for stylist, Red for store closed
-            extendedProps: {
-                stylistId: sch.stylist ? sch.stylist.id : null,
-                stylistName: sch.stylist ? sch.stylist.name : null,
-                stylistUserId: (sch.stylist && sch.stylist.user) ? sch.stylist.user.id : null,
-                reason: sch.reason
+        const events = response.data.map(sch => {
+            let end = sch.endTime
+            // If it's an all-day event, we need to adjust the end date for FullCalendar
+            // FullCalendar treats end dates as exclusive. So an event ending at 23:59 should conceptually go to the next day's 00:00
+            if (sch.isAllDay) {
+                const endDate = new Date(sch.endTime)
+                // Check if time is 23:59
+                if (endDate.getHours() === 23 && endDate.getMinutes() === 59) {
+                    // Add 1 minute to make it 00:00 of the next day
+                    endDate.setMinutes(endDate.getMinutes() + 1)
+                    end = toLocalISOString(endDate)
+                }
             }
-        }))
+
+            return {
+                id: sch.id,
+                title: `${sch.stylist ? sch.stylist.name : t('admin.storeClosed')} - ${sch.reason || t('admin.leave')}`,
+                start: sch.startTime,
+                end: end,
+                allDay: sch.isAllDay,
+                color: sch.stylist ? getStylistColor(sch.stylist.name) : '#F56C6C', // Dynamic color for stylist, Red for store closed
+                extendedProps: {
+                    stylistId: sch.stylist ? sch.stylist.id : null,
+                    stylistName: sch.stylist ? sch.stylist.name : null,
+                    stylistUserId: (sch.stylist && sch.stylist.user) ? sch.stylist.user.id : null,
+                    reason: sch.reason
+                }
+            }
+        })
         scheduleCalendarOptions.value.events = events
     } catch (error) {
         console.error('Failed to fetch schedules', error)
@@ -1080,9 +1328,20 @@ const fetchSchedules = async () => {
 const openAddScheduleDialog = () => {
     isEditingSchedule.value = false
     editingScheduleId.value = null
+
+    // Default stylist logic
+    let defaultStylistId = null
+    if (userStore.dbUser?.role === 'STYLIST') {
+        const myStylist = stylists.value.find(s => s.user && s.user.id === userStore.dbUser.id)
+        if (myStylist) defaultStylistId = myStylist.id
+    }
+
     newSchedule.value = {
-        stylistId: null,
-        dateRange: [],
+        stylistId: defaultStylistId,
+        startDate: '',
+        endDate: '',
+        startTimeStr: '',
+        endTimeStr: '',
         isAllDay: false,
         reason: ''
     }
@@ -1144,15 +1403,33 @@ const addStoreClosedSchedule = async () => {
 }
 
 const addSchedule = async () => {
-    // Validation for separate fields
-    if (!newSchedule.value.stylistId || !newSchedule.value.startDate || !newSchedule.value.startTimeStr || !newSchedule.value.endDate || !newSchedule.value.endTimeStr) {
+    // Validation: Date and Stylist are required
+    if (!newSchedule.value.stylistId || !newSchedule.value.startDate || !newSchedule.value.endDate) {
         ElMessage.warning(t('admin.fillAllFields'))
         return
     }
 
+    // Handle empty time => All Day defaults
+    let startTimeStr = newSchedule.value.startTimeStr
+    let endTimeStr = newSchedule.value.endTimeStr
+    let isAllDayIdx = false
+
+    if (!startTimeStr && !endTimeStr) {
+        // Both empty -> All Day
+        startTimeStr = '00:00'
+        endTimeStr = '23:59'
+        isAllDayIdx = true
+    } else if (!startTimeStr) {
+        // Only start empty -> Default to 00:00
+        startTimeStr = '00:00'
+    } else if (!endTimeStr) {
+        // Only end empty -> Default to 23:59
+        endTimeStr = '23:59'
+    }
+
     // Combine date and time to ISO format (Strings)
-    const startISO = `${newSchedule.value.startDate}T${newSchedule.value.startTimeStr}:00`
-    const endISO = `${newSchedule.value.endDate}T${newSchedule.value.endTimeStr}:00`
+    const startISO = `${newSchedule.value.startDate}T${startTimeStr}:00`
+    const endISO = `${newSchedule.value.endDate}T${endTimeStr}:00`
 
     // Validate logic: Start must be before End
     if (new Date(startISO) >= new Date(endISO)) {
@@ -1166,7 +1443,7 @@ const addSchedule = async () => {
             stylistId: newSchedule.value.stylistId,
             startTime: startISO,
             endTime: endISO,
-            isAllDay: false,
+            isAllDay: isAllDayIdx, // Store as part of the schedule if backend supports it
             reason: newSchedule.value.reason
         }
 
@@ -1238,17 +1515,18 @@ const formatTime = (timeStr) => {
 }
 
 const exportExcel = async () => {
-    if (!exportStartDate.value || !exportEndDate.value) {
-        ElMessage.warning(t('admin.selectDateRange'))
+    if (!exportDate.value) {
+        ElMessage.warning(t('admin.selectDate'))
         return
     }
-    // Format dates to ISO string but keep local time if possible or handle timezone
-    // The backend expects LocalDateTime, so ISO string is usually fine if backend parses it correctly.
-    // However, standard ISO string is UTC. Let's send it and see.
-    // Actually, Element Plus date picker returns Date objects.
 
-    const start = new Date(exportStartDate.value).toISOString()
-    const end = new Date(exportEndDate.value).toISOString()
+    const startObj = new Date(exportDate.value)
+    startObj.setHours(0, 0, 0, 0)
+    const start = startObj.toISOString()
+
+    const endObj = new Date(exportDate.value)
+    endObj.setHours(23, 59, 59, 999)
+    const end = endObj.toISOString()
 
     loadingExport.value = true
     try {
@@ -1436,25 +1714,30 @@ const deleteStylist = async (id) => {
     }
 }
 
-const openCustomerCard = (user) => {
-    let images = []
-    try {
-        if (user.customerCardImages) {
-            images = JSON.parse(user.customerCardImages)
-        }
-    } catch (e) {
-        console.error("Failed to parse images", e)
-    }
-
+const openNewCustomerCardDialog = () => {
     customerCardForm.value = {
-        id: user.id,
-        name: user.realName || user.displayName,
-        content: user.customerCardContent || '',
-        images: images
+        id: null,
+        userId: null,
+        name: '',
+        content: '',
+        images: [],
+        cardDate: new Date().toISOString().split('T')[0]
+    }
+    customerCardFileList.value = []
+    customerCardDialogVisible.value = true
+}
+
+const editCustomerCard = (card) => {
+    customerCardForm.value = {
+        id: card.id,
+        userId: card.user?.id,
+        name: card.user?.realName || card.user?.displayName,
+        content: card.content || '',
+        images: card.images ? JSON.parse(card.images) : [],
+        cardDate: card.cardDate ? card.cardDate.split('T')[0] : new Date().toISOString().split('T')[0]
     }
 
-    // Convert to Element Plus FileList format
-    customerCardFileList.value = images.map(url => ({
+    customerCardFileList.value = customerCardForm.value.images.map(url => ({
         name: url.split('/').pop(),
         url: getFullImageUrl(url)
     }))
@@ -1462,38 +1745,48 @@ const openCustomerCard = (user) => {
     customerCardDialogVisible.value = true
 }
 
+const deleteCustomerCard = async (id) => {
+    if (!confirm(t('admin.deleteConfirm'))) return
+    try {
+        await axios.delete(`${config.apiBaseUrl}/api/customer-cards/${id}`)
+        ElMessage.success(t('admin.deleteSuccess'))
+        fetchCustomerCards()
+    } catch (e) {
+        ElMessage.error(t('common.error'))
+    }
+}
+
 const saveCustomerCard = async () => {
+    if (!customerCardForm.value.userId && !customerCardForm.value.id) {
+        ElMessage.warning(t('booking.fillAllFields'))
+        return
+    }
     loadingCustomerCard.value = true
     try {
-        // Extract URLs from fileList
-        // If it's a new upload, response is in .response.url, otherwise .url
         const finalImages = customerCardFileList.value.map(f => {
             if (f.response && f.response.url) return f.response.url
-            // If url is full (http...), need to strip base url if backend expects relative? 
-            // Our backend stores whatever we send. But getFullImageUrl prepended base.
-            // Let's see. If we used getFullImageUrl previously, the url in fileList has http.
-            // We should probably strip it if we want relative storage, or just store what we have.
-            // For consistency: store relative paths if they are from our server.
-
-            // If getFullImageUrl used apiBaseUrl, let's strip it.
             if (f.url.startsWith(config.apiBaseUrl)) {
                 return f.url.substring(config.apiBaseUrl.length)
             }
             return f.url
         })
 
-        await axios.put(`${config.apiBaseUrl}/api/users/${customerCardForm.value.id}/card`, {
+        const payload = {
+            userId: customerCardForm.value.userId,
             content: customerCardForm.value.content,
-            images: finalImages
-        })
-        ElMessage.success(t('admin.cardUpdated'))
-        customerCardDialogVisible.value = false
-        // Update local list
-        const u = userList.value.find(u => u.id === customerCardForm.value.id)
-        if (u) {
-            u.customerCardContent = customerCardForm.value.content
-            u.customerCardImages = JSON.stringify(finalImages)
+            images: JSON.stringify(finalImages),
+            cardDate: customerCardForm.value.cardDate || new Date().toISOString().split('T')[0]
         }
+
+        if (customerCardForm.value.id) {
+            await axios.put(`${config.apiBaseUrl}/api/customer-cards/${customerCardForm.value.id}`, payload)
+            ElMessage.success(t('admin.cardUpdated'))
+        } else {
+            await axios.post(`${config.apiBaseUrl}/api/customer-cards`, payload)
+            ElMessage.success(t('admin.cardCreated'))
+        }
+        customerCardDialogVisible.value = false
+        fetchCustomerCards()
     } catch (e) {
         console.error(e)
         ElMessage.error(t('common.error'))
@@ -1520,26 +1813,90 @@ const saveCustomerCard = async () => {
 </style>
 
 <style scoped>
-.admin-container {
-    padding: 20px;
+/* Allow scrolling on tabs for mobile/smaller screens and hide arrows */
+:deep(.el-tabs__nav-wrap.is-scrollable) {
+    padding: 0 20px;
+    box-sizing: border-box;
 }
 
-.time-selection-row {
+:deep(.el-tabs__nav-prev),
+:deep(.el-tabs__nav-next) {
+    display: none !important;
+}
+
+:deep(.el-tabs__nav-scroll) {
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+}
+
+/* Hide scrollbar but keep functionality */
+:deep(.el-tabs__nav-scroll)::-webkit-scrollbar {
+    display: none;
+}
+
+/* Ensure the nav flexes correctly */
+:deep(.el-tabs__nav) {
+    display: inline-flex;
+    float: none !important;
+}
+
+.booking-control-group {
     display: flex;
-    gap: 15px;
-    margin-bottom: 0px;
-    /* el-form-item already has margin */
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+
+.current-limit {
+    font-size: 14px;
+    color: #606266;
+}
+
+.current-limit strong {
+    color: #409EFF;
+}
+
+.admin-container {
+    padding: 20px;
+    text-align: left;
+}
+
+/* Ensure form labels and contents are left aligned */
+:deep(.el-form-item__label) {
+    text-align: left;
+    display: block;
+    /* Ensure block display for top labels */
 }
 
 .schedule-datetime-group {
-    margin-bottom: 10px;
+    margin-bottom: 18px;
+    /* Match standard el-form-item margin */
+    text-align: left;
 }
 
 .group-label {
     font-size: 14px;
     color: #606266;
     margin-bottom: 8px;
-    font-weight: 500;
+    /* Standard label margin */
+    line-height: 22px;
+    /* Standard line height */
+}
+
+.time-hint {
+    font-size: 12px;
+    color: #909399;
+    margin-top: 5px;
+}
+
+.time-hint-inline {
+    font-size: 12px;
+    color: #F56C6C;
+    /* Light red/danger color */
+    flex-shrink: 0;
 }
 
 .datetime-row {

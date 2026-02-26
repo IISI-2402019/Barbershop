@@ -69,3 +69,12 @@ CREATE TABLE IF NOT EXISTS stored_files (
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS reminder_cycle INTEGER;
 ALTER TABLE stylists ADD COLUMN IF NOT EXISTS user_id BIGINT REFERENCES users(id);
+
+-- 顧客卡片表
+CREATE TABLE IF NOT EXISTS customer_cards (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id),
+    content TEXT,
+    images TEXT,
+    card_date DATE NOT NULL
+);

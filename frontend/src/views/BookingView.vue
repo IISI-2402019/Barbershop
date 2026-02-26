@@ -7,7 +7,7 @@
             <!-- Stylist Info -->
             <el-form-item :label="$t('booking.stylist')">
                 <el-select v-model="form.stylistId" :placeholder="$t('booking.selectStylist')"
-                    @change="handleStylistChange">
+                    @change="handleStylistChange" :loading="loadingStylists" v-loading="loadingStylists">
                     <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
                 </el-select>
             </el-form-item>
@@ -30,14 +30,23 @@
 
             <!-- Time Selection -->
             <el-form-item :label="$t('booking.time')">
-                <el-select v-model="form.time" :placeholder="$t('booking.selectTime')"
-                    :disabled="!form.date || availableSlots.length === 0" v-loading="loadingSlots">
-                    <el-option v-for="slot in availableSlots" :key="slot" :label="slot" :value="slot" />
-                </el-select>
+                <div v-if="!form.date || availableSlots.length === 0" class="time-slots-placeholder">
+                    {{ !form.date ? $t('booking.selectDateFirst') : (loadingSlots ? $t('common.loading') :
+                        $t('booking.noSlots')) }}
+                </div>
+                <div v-else class="time-slots-grid" v-loading="loadingSlots">
+                    <el-button v-for="slot in availableSlots" :key="slot.time"
+                        :type="form.time === slot.time ? 'primary' : (slot.available ? 'default' : '')"
+                        :disabled="!slot.available" @click="form.time = slot.time" class="time-slot-btn"
+                        :class="{ 'is-unavailable': !slot.available }">
+                        {{ slot.time }}
+                    </el-button>
+                </div>
             </el-form-item>
 
             <el-form-item>
-                <el-button type="primary" @click="submitBooking" :loading="submitLoading">{{ $t('common.confirm') }}</el-button>
+                <el-button type="primary" @click="submitBooking" :loading="submitLoading">{{ $t('common.confirm')
+                }}</el-button>
                 <el-button @click="$router.back()">{{ $t('common.cancel') }}</el-button>
             </el-form-item>
         </el-form>
@@ -61,7 +70,9 @@ const userStore = useUserStore()
 const stylists = ref([])
 const services = ref([])
 const availableSlots = ref([])
+const unavailableDates = ref([])
 const loadingSlots = ref(false)
+const loadingStylists = ref(false)
 const submitLoading = ref(false)
 
 const form = ref({
@@ -71,13 +82,42 @@ const form = ref({
     time: ''
 })
 
+const maxBookingDate = ref(null)
+
+const fetchUnavailableDates = async () => {
+    if (!form.value.stylistId) return
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/schedules/unavailable-dates`, {
+            params: { stylistId: form.value.stylistId }
+        })
+        unavailableDates.value = res.data
+    } catch (e) {
+        console.error('Failed to fetch unavailable dates', e)
+    }
+}
+
 onMounted(async () => {
+    // Fetch Settings
+    try {
+        const settingsRes = await axios.get(`${config.apiBaseUrl}/api/settings`)
+        if (settingsRes.data && settingsRes.data.max_booking_date) {
+            maxBookingDate.value = new Date(settingsRes.data.max_booking_date)
+            // Ensure the max date is inclusive by setting time to end of day
+            maxBookingDate.value.setHours(23, 59, 59, 999)
+        }
+    } catch (e) {
+        console.error('Failed to load settings', e)
+    }
+
     // Fetch Stylists
+    loadingStylists.value = true
     try {
         const sRes = await axios.get(`${config.apiBaseUrl}/api/stylists`)
         stylists.value = sRes.data
     } catch (e) {
         console.error('Failed to load stylists', e)
+    } finally {
+        loadingStylists.value = false
     }
 
     // Fetch Services
@@ -90,11 +130,27 @@ onMounted(async () => {
 
     if (route.query.stylistId) {
         form.value.stylistId = parseInt(route.query.stylistId)
+        fetchUnavailableDates()
     }
 })
 
 const disabledDate = (time) => {
-    return time.getTime() < Date.now() - 8.64e7
+    const isPast = time.getTime() < Date.now() - 8.64e7
+    if (isPast) return true
+
+    const year = time.getFullYear()
+    const month = String(time.getMonth() + 1).padStart(2, '0')
+    const day = String(time.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    if (unavailableDates.value.includes(dateStr)) {
+        return true
+    }
+
+    if (maxBookingDate.value) {
+        return time.getTime() > maxBookingDate.value.getTime()
+    }
+    return false
 }
 
 const handleStylistChange = () => {
@@ -102,6 +158,7 @@ const handleStylistChange = () => {
     form.value.date = ''
     form.value.time = ''
     availableSlots.value = []
+    fetchUnavailableDates()
 }
 
 const handleServiceChange = () => {
@@ -188,9 +245,44 @@ const submitBooking = async () => {
     margin: 0 auto;
 }
 
+.time-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.time-slot-btn {
+    width: 100%;
+    margin: 0 !important;
+    /* Override Element Plus default margins */
+}
+
+.time-slots-placeholder {
+    color: #909399;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+    background: #f5f7fa;
+    border-radius: 4px;
+}
+
+.is-unavailable {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f5f7fa !important;
+    border-color: #e4e7ed !important;
+    color: #c0c4cc !important;
+}
+
 @media (max-width: 480px) {
     .booking-container {
         padding: 20px 16px;
+    }
+
+    .time-slots-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 </style>

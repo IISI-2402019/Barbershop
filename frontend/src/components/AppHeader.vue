@@ -5,7 +5,7 @@
         <img :src="logo" alt="Barbershop Logo" class="header-logo" />
         <span class="app-title">Barbershop</span>
       </router-link>
-      
+
       <div class="header-actions">
         <el-button size="small" @click="toggleLanguage">
           {{ locale === 'zh-TW' ? 'English' : '繁體中文' }}
@@ -59,7 +59,7 @@ const toggleLanguage = () => {
 }
 
 .header-logo {
-  height: 40px;
+  height: 60px;
   width: auto;
 }
 
@@ -76,7 +76,8 @@ const toggleLanguage = () => {
 
 @media (max-width: 480px) {
   .app-title {
-    display: none; /* Hide title on very small screens if needed */
+    display: none;
+    /* Hide title on very small screens if needed */
   }
 }
 </style>

@@ -1,3 +1,4 @@
+
 package com.barbershop.controller;
 
 import com.barbershop.dto.ScheduleRequest;
@@ -9,7 +10,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 import com.barbershop.model.User;
 import com.barbershop.repository.UserRepository;
@@ -34,6 +39,31 @@ public class ScheduleController {
             return scheduleRepository.findByStylistId(stylistId);
         }
         return scheduleRepository.findAll();
+    }
+
+
+    @GetMapping("/unavailable-dates")
+    public List<String> getUnavailableDates(@RequestParam Long stylistId) {
+        // Fetch all future schedules for this stylist (and global ones) that are marked as 'isAllDay'
+        // Just fetching from "now" onwards for date picker validation
+        LocalDateTime now = LocalDateTime.now().minusDays(1); // include today
+        List<Schedule> unavailableSchedules = scheduleRepository.findFutureUnavailableSchedules(stylistId, now);
+
+        List<String> disabledDates = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        for (Schedule s : unavailableSchedules) {
+            // Expand date range if multi-day
+            LocalDateTime start = s.getStartTime();
+            LocalDateTime end = s.getEndTime();
+            
+            LocalDateTime current = start;
+            while (current.isBefore(end) || current.isEqual(end)) {
+                disabledDates.add(current.format(formatter));
+                current = current.plusDays(1);
+            }
+        }
+        return disabledDates.stream().distinct().collect(Collectors.toList());
     }
 
     @PostMapping

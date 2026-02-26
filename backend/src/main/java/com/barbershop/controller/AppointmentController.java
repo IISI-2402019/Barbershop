@@ -16,6 +16,8 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 // Excel Export Imports
 import org.apache.poi.ss.usermodel.*;
@@ -54,7 +56,7 @@ public class AppointmentController {
     private SystemSettingService systemSettingService;
 
     @GetMapping("/available-slots")
-    public ResponseEntity<List<String>> getAvailableSlots(
+    public ResponseEntity<List<Map<String, Object>>> getAvailableSlots(
             @RequestParam Long stylistId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam Long serviceId,
@@ -65,7 +67,7 @@ public class AppointmentController {
         Service service = serviceRepository.findById(serviceId)
                 .orElseThrow(() -> new RuntimeException("找不到指定的服務項目"));
 
-        List<String> availableSlots = new ArrayList<>();
+        List<Map<String, Object>> allSlots = new ArrayList<>();
         long durationMinutes = (long) (service.getDurationHours() * 60);
 
         // Define working hours from DB
@@ -133,14 +135,15 @@ public class AppointmentController {
                 }
             }
 
-            if (!hasConflict) {
-                availableSlots.add(currentSlot.toString());
-            }
+            Map<String, Object> slotInfo = new HashMap<>();
+            slotInfo.put("time", currentSlot.toString());
+            slotInfo.put("available", !hasConflict);
+            allSlots.add(slotInfo);
 
             currentSlot = currentSlot.plusMinutes(60);
         }
 
-        return ResponseEntity.ok(availableSlots);
+        return ResponseEntity.ok(allSlots);
     }
 
     @PostMapping
