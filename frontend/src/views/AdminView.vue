@@ -2,6 +2,23 @@
     <div class="admin-container">
         <h2>{{ $t('home.adminDashboard') }}</h2>
         <el-tabs v-model="activeTab">
+            <el-tab-pane :label="$t('admin.appointments')" name="appointments">
+                <div class="appointment-controls" style="margin-bottom: 20px;">
+                    <el-select v-model="filterStylistId" :placeholder="$t('admin.selectStylist')"
+                        style="margin-right: 10px; width: 200px;" clearable @change="fetchAppointments"
+                        class="filter-item" :loading="loadingAppointments">
+                        <el-option :label="$t('admin.allStylists')" :value="null" />
+                        <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
+                    </el-select>
+                    <el-date-picker v-model="exportDate" type="date" :placeholder="$t('admin.selectDate')"
+                        style="margin-right: 10px;" class="date-picker-item" format="YYYY-MM-DD" :clearable="false" />
+                    <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel')
+                    }}</el-button>
+                </div>
+                <div v-loading="loadingAppointments">
+                    <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
+                </div>
+            </el-tab-pane>
             <el-tab-pane :label="$t('admin.customerCardTab')" name="customerCards">
                 <div class="customer-card-management">
                     <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
@@ -38,53 +55,6 @@
                             </template>
                         </el-table-column>
                     </el-table>
-                </div>
-            </el-tab-pane>
-            <el-tab-pane :label="$t('admin.appointments')" name="appointments">
-                <div class="appointment-controls" style="margin-bottom: 20px;">
-                    <el-select v-model="filterStylistId" :placeholder="$t('admin.selectStylist')"
-                        style="margin-right: 10px; width: 200px;" clearable @change="fetchAppointments"
-                        class="filter-item" :loading="loadingAppointments">
-                        <el-option :label="$t('admin.allStylists')" :value="null" />
-                        <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
-                    </el-select>
-                    <el-date-picker v-model="exportDate" type="date" :placeholder="$t('admin.selectDate')"
-                        style="margin-right: 10px;" class="date-picker-item" format="YYYY-MM-DD" :clearable="false" />
-                    <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel')
-                    }}</el-button>
-                </div>
-                <div v-loading="loadingAppointments">
-                    <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
-                </div>
-            </el-tab-pane>
-            <el-tab-pane :label="$t('admin.personalSettings')" name="personal"
-                v-if="userStore.dbUser?.role === 'STYLIST'">
-                <div class="personal-settings">
-                    <h3>{{ $t('admin.personalSettings') }}</h3>
-                    <div v-if="!currentStylistProfile" style="padding: 20px;">
-                        <el-skeleton :rows="3" animated />
-                    </div>
-                    <el-form v-else :model="currentStylistProfile" label-width="120px" style="max-width: 600px;">
-                        <el-form-item :label="$t('admin.name')">
-                            <el-input v-model="currentStylistProfile.name" />
-                        </el-form-item>
-                        <el-form-item :label="$t('admin.image')">
-                            <el-upload class="avatar-uploader" :action="uploadUrl" :show-file-list="false"
-                                :on-success="handlePersonalAvatarSuccess" :before-upload="beforeAvatarUpload"
-                                accept="image/*">
-                                <img v-if="currentStylistProfile.avatarUrl"
-                                    :src="getFullImageUrl(currentStylistProfile.avatarUrl)" class="avatar" />
-                                <el-icon v-else class="avatar-uploader-icon">
-                                    <Plus />
-                                </el-icon>
-                            </el-upload>
-                        </el-form-item>
-                        <el-form-item>
-                            <el-button type="primary" @click="updatePersonalProfile"
-                                :loading="loadingPersonalProfile">{{
-                                    $t('common.save') }}</el-button>
-                        </el-form-item>
-                    </el-form>
                 </div>
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.schedule')" name="schedule">
@@ -178,6 +148,36 @@
                             </template>
                         </el-table-column> -->
                     </el-table>
+                </div>
+            </el-tab-pane>
+            <el-tab-pane :label="$t('admin.personalSettings')" name="personal"
+                v-if="userStore.dbUser?.role === 'STYLIST'">
+                <div class="personal-settings">
+                    <h3>{{ $t('admin.personalSettings') }}</h3>
+                    <div v-if="!currentStylistProfile" style="padding: 20px;">
+                        <el-skeleton :rows="3" animated />
+                    </div>
+                    <el-form v-else :model="currentStylistProfile" label-width="120px" style="max-width: 600px;">
+                        <el-form-item :label="$t('admin.name')">
+                            <el-input v-model="currentStylistProfile.name" />
+                        </el-form-item>
+                        <el-form-item :label="$t('admin.image')">
+                            <el-upload class="avatar-uploader" :action="uploadUrl" :show-file-list="false"
+                                :on-success="handlePersonalAvatarSuccess" :before-upload="beforeAvatarUpload"
+                                accept="image/*">
+                                <img v-if="currentStylistProfile.avatarUrl"
+                                    :src="getFullImageUrl(currentStylistProfile.avatarUrl)" class="avatar" />
+                                <el-icon v-else class="avatar-uploader-icon">
+                                    <Plus />
+                                </el-icon>
+                            </el-upload>
+                        </el-form-item>
+                        <el-form-item>
+                            <el-button type="primary" @click="updatePersonalProfile"
+                                :loading="loadingPersonalProfile">{{
+                                    $t('common.save') }}</el-button>
+                        </el-form-item>
+                    </el-form>
                 </div>
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.settings')" name="settings"
@@ -501,6 +501,22 @@
 
         <el-dialog v-model="previewVisible">
             <img style="width: 100%" :src="previewImageUrl" alt="Preview Image" />
+        </el-dialog>
+
+        <!-- Customer Card Images Viewer -->
+        <el-dialog v-model="customerCardImagesVisible" :title="$t('admin.viewImages')" width="80%" append-to-body destroy-on-close>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+                <el-image 
+                    v-for="(url, index) in currentCardImages" 
+                    :key="index"
+                    :src="url"
+                    :preview-src-list="currentCardImages"
+                    :initial-index="index"
+                    fit="contain"
+                    style="width: 200px; height: 200px; border: 1px solid #ccc; padding: 5px;"
+                >
+                </el-image>
+            </div>
         </el-dialog>
     </div>
 </template>
