@@ -11,7 +11,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "line_user_id", nullable = false, unique = true)
+    // lineUserId can be null for walk-in customers
+    @Column(name = "line_user_id", unique = true)
     private String lineUserId;
 
     @Column(name = "display_name")

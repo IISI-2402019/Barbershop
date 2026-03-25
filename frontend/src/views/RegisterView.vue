@@ -3,10 +3,10 @@
         <h2>{{ $t('register.title') }}</h2>
         <div v-if="userStore.isLoading">{{ $t('common.loading') }}</div>
         <el-form v-else-if="userStore.dbUser" :model="form" label-width="120px" label-position="top">
-            <el-form-item :label="$t('register.name')">
+            <el-form-item :label="$t('register.name')" required>
                 <el-input v-model="form.realName" :placeholder="$t('register.name')" />
             </el-form-item>
-            <el-form-item :label="$t('register.phone')">
+            <el-form-item :label="$t('register.phone')" required>
                 <el-input v-model="form.phone" :placeholder="$t('register.phone')" maxlength="10" />
             </el-form-item>
             <el-form-item>

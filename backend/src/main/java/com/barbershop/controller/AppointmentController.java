@@ -150,19 +150,39 @@ public class AppointmentController {
     @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> createAppointment(@RequestBody AppointmentRequest request) {
         // 1. Validate User
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("找不到使用者"));
+        User user;
+        if (request.getUserId() != null) {
+            user = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new RuntimeException("找不到使用者"));
+        } else {
+            // Create New Guest User (Offline Customer)
+            if (request.getGuestName() == null || request.getGuestPhone() == null) {
+                return ResponseEntity.badRequest().body("若未選擇現有會員，必須填寫姓名與電話");
+            }
+            // Check if a line-less user with same name/phone already exists to reuse? 
+            // For now, let's create a new one to avoid merging wrong people.
+            user = new User();
+            user.setRealName(request.getGuestName());
+            user.setPhone(request.getGuestPhone());
+            user.setDisplayName(request.getGuestName()); // Use real name as display name
+            user.setRole(UserRole.CUSTOMER);
+            // lineUserId is null
+            user = userRepository.save(user);
+        }
 
         // 2. Validate Stylist (With Lock to prevent double booking)
         Stylist stylist = stylistRepository.findByIdWithLock(request.getStylistId())
                 .orElseThrow(() -> new RuntimeException("找不到指定的設計師"));
 
         // 3. Validate Service
-        Service service = serviceRepository.findById(request.getServiceId())
+        Service service = serviceRepository.findById(request.getServiceId()) // Expecting Service ID
                 .orElseThrow(() -> new RuntimeException("找不到指定的服務項目"));
 
         // 4. Calculate End Time
         LocalDateTime start = request.getStartTime();
+        if (start == null) {
+             return ResponseEntity.badRequest().body("必須指定預約時間");
+        }
         long durationMinutes = (long) (service.getDurationHours() * 60);
         LocalDateTime end = start.plusMinutes(durationMinutes);
 
@@ -176,10 +196,8 @@ public class AppointmentController {
         if (!conflicts.isEmpty()) {
             return ResponseEntity.badRequest().body("該時段已被預約，請再次選擇");
         }
-
+        
         // 6. Check Schedule Availability (Leave/Off-time overlap)
-        // This now checks both the stylist's personal schedule AND global store
-        // schedules (stylist IS NULL)
         List<Schedule> scheduleConflicts = scheduleRepository.findOverlappingSchedules(
                 stylist.getId(), end, start);
 
@@ -191,8 +209,10 @@ public class AppointmentController {
         Appointment appointment = new Appointment(user, stylist, service, start, end, AppointmentStatus.BOOKED);
         Appointment saved = appointmentRepository.save(appointment);
 
-        // Send LINE Notification
-        lineNotificationService.sendBookingSuccess(saved);
+        // Send LINE Notification (Only if user has Line ID)
+        if (user.getLineUserId() != null) {
+            lineNotificationService.sendBookingSuccess(saved);
+        }
 
         return ResponseEntity.ok(saved);
     }

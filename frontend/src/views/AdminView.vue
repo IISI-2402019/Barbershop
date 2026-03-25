@@ -14,6 +14,7 @@
                         style="margin-right: 10px;" class="date-picker-item" format="YYYY-MM-DD" :clearable="false" />
                     <el-button type="success" @click="exportExcel" :loading="loadingExport">{{ $t('admin.exportExcel')
                     }}</el-button>
+                    <el-button type="primary" class="add-appointment-btn" @click="openAddAppointmentDialog">{{ $t('admin.addAppointment') }}</el-button>
                 </div>
                 <div v-loading="loadingAppointments">
                     <FullCalendar ref="appointmentCalendarRef" :options="calendarOptions" />
@@ -131,8 +132,18 @@
                     </div>
 
                     <el-table :data="userList" style="width: 100%" v-loading="loadingUsers">
-                        <el-table-column prop="realName" :label="$t('register.name')" min-width="100" />
+                        <el-table-column prop="realName" :label="$t('register.name')" min-width="100">
+                             <template #default="scope">
+                                {{ scope.row.realName || scope.row.displayName }}
+                            </template>
+                        </el-table-column>
                         <el-table-column prop="phone" :label="$t('register.phone')" min-width="120" />
+                        <el-table-column :label="$t('admin.lineUser')" min-width="100">
+                             <template #default="scope">
+                                <el-tag v-if="scope.row.lineUserId" type="success">LINE</el-tag>
+                                <el-tag v-else type="info">{{ $t('common.guest') }}</el-tag>
+                            </template>
+                        </el-table-column>
                         <el-table-column :label="$t('admin.role')" min-width="180">
                             <template #default="scope">
                                 <el-select v-model="scope.row.role" @change="updateUserRole(scope.row)"
@@ -215,7 +226,7 @@
                                     {{ $t('admin.noBookingLimit') }}
                                 </div>
 
-                                <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px;">
+                                <div style="display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap;">
                                     <span style="white-space: nowrap;">{{ $t('admin.openBookingTo') }}:</span>
                                     <el-date-picker v-model="selectedOpenMonth" type="month"
                                         :placeholder="$t('admin.selectMonth')" style="width: 150px;" format="YYYY-MM"
@@ -334,12 +345,16 @@
         </el-dialog>
 
         <!-- Store Closed Dialog -->
-        <el-dialog v-model="storeClosedDialogVisible" :title="$t('admin.storeClosed')">
+        <el-dialog v-model="storeClosedDialogVisible" :title="$t('admin.storeClosed')" class="responsive-dialog" width="400px">
             <el-form :model="storeClosedSchedule">
-                <el-form-item :label="$t('admin.dateRange')">
-                    <el-date-picker v-model="storeClosedSchedule.dateRange" type="datetimerange"
-                        :range-separator="$t('admin.to')" :start-placeholder="$t('admin.startDate')"
-                        :end-placeholder="$t('admin.endDate')" format="YYYY-MM-DD HH:mm" />
+                <el-form-item :label="$t('admin.startDate')">
+                    <el-date-picker v-model="storeClosedSchedule.startDate" type="date"
+                        :placeholder="$t('admin.startDate')" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%"
+                        @change="(val) => { if (val) storeClosedSchedule.endDate = val }" />
+                </el-form-item>
+                <el-form-item :label="$t('admin.endDate')">
+                    <el-date-picker v-model="storeClosedSchedule.endDate" type="date"
+                        :placeholder="$t('admin.endDate')" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%" />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -353,7 +368,7 @@
         </el-dialog>
 
         <!-- Schedule Detail Dialog -->
-        <el-dialog v-model="scheduleDetailVisible" :title="$t('admin.scheduleDetails')" width="400px">
+        <el-dialog v-model="scheduleDetailVisible" :title="$t('admin.scheduleDetails')" width="400px" class="responsive-dialog">
             <div v-if="selectedSchedule">
                 <p><strong>{{ selectedSchedule.isStoreClosed ? $t('admin.storeClosed') : $t('admin.stylist')
                 }}:</strong>
@@ -404,7 +419,7 @@
         </el-dialog>
 
         <!-- Appointment Detail Dialog -->
-        <el-dialog v-model="appointmentDetailVisible" :title="$t('admin.appointmentDetails')" width="400px">
+        <el-dialog v-model="appointmentDetailVisible" :title="$t('admin.appointmentDetails')" width="400px" class="responsive-dialog">
             <div v-if="selectedAppointment">
                 <p><strong>{{ $t('admin.customerName') }}:</strong> {{ selectedAppointment.customerName }}</p>
                 <p><strong>{{ $t('admin.customerPhone') }}:</strong> {{ selectedAppointment.customerPhone }}</p>
@@ -429,7 +444,7 @@
         </el-dialog>
 
         <!-- Edit Time Dialog -->
-        <el-dialog v-model="editTimeDialogVisible" :title="$t('admin.editTime')" width="400px">
+        <el-dialog v-model="editTimeDialogVisible" :title="$t('admin.editTime')" width="400px" class="responsive-dialog">
             <el-form :model="editTimeForm" label-width="100px" label-position="top">
                 <el-form-item :label="$t('booking.date')">
                     <el-date-picker v-model="editTimeForm.date" type="date" format="YYYY-MM-DD"
@@ -517,6 +532,79 @@
                 >
                 </el-image>
             </div>
+        </el-dialog>
+
+        <!-- Add Appointment Dialog -->
+        <el-dialog v-model="addAppointmentDialogVisible" :title="$t('admin.addAppointment')" width="500px" class="responsive-dialog">
+            <el-form :model="newAppointment" label-width="120px" label-position="top">
+                
+                <!-- Guest Selection Mode Switch -->
+                <el-form-item>
+                    <el-radio-group v-model="isManualGuest">
+                        <el-radio :value="false">{{ $t('admin.selectUser') }}</el-radio>
+                        <el-radio :value="true">{{ $t('admin.manualGuest') }}</el-radio>
+                    </el-radio-group>
+                </el-form-item>
+
+                <!-- Select User Mode -->
+                <el-form-item v-if="!isManualGuest" :label="$t('admin.selectUser')" required>
+                    <el-select v-model="newAppointment.userId" filterable :placeholder="$t('admin.selectUser')" style="width: 100%">
+                         <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                                :value="u.id" />
+                    </el-select>
+                </el-form-item>
+
+                <!-- Manual Guest Input Mode -->
+                <template v-else>
+                    <el-form-item :label="$t('register.name')" required>
+                        <el-input v-model="newAppointment.guestName" :placeholder="$t('register.name')" />
+                    </el-form-item>
+                    <el-form-item :label="$t('register.phone')" required>
+                        <el-input v-model="newAppointment.guestPhone" :placeholder="$t('register.phone')" maxlength="10" />
+                    </el-form-item>
+                </template>
+
+                <el-form-item :label="$t('admin.stylist')" required>
+                    <el-select v-model="newAppointment.stylistId" :placeholder="$t('admin.selectStylist')" style="width: 100%" @change="handleNewAppointmentStylistChange">
+                        <el-option v-for="s in stylists" :key="s.id" :label="s.name" :value="s.id" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="$t('admin.serviceNameLabel')" required>
+                     <el-select v-model="newAppointment.serviceId" :placeholder="$t('admin.searchService')" style="width: 100%" :disabled="!newAppointment.stylistId" @change="handleNewAppointmentServiceChange">
+                        <el-option v-for="service in services" :key="service.id"
+                        :label="service.name + ' (' + service.durationHours + 'h)'" :value="service.id" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item :label="$t('admin.cardDate')" required>
+                     <el-date-picker v-model="newAppointment.date" type="date" :placeholder="$t('admin.selectDate')"
+                        format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%"
+                        :disabled="!newAppointment.serviceId"
+                        :disabled-date="appointmentDisabledDate"
+                        @change="handleNewAppointmentDateChange" />
+                </el-form-item>
+                <el-form-item :label="$t('booking.time')" required>
+                    <div v-if="loadingAppointmentSlots" class="time-slots-placeholder">
+                        {{ $t('common.loading') }}
+                    </div>
+                    <div v-else-if="!newAppointment.date || appointmentAvailableSlots.length === 0" class="time-slots-placeholder">
+                        {{ !newAppointment.date ? $t('booking.selectDateFirst') : $t('booking.noSlots') }}
+                    </div>
+                    <div v-else class="time-slots-grid">
+                        <el-button v-for="slot in appointmentAvailableSlots" :key="slot.time"
+                            :type="newAppointment.time === slot.time ? 'primary' : 'default'"
+                            :disabled="!slot.available" @click="newAppointment.time = slot.time" class="time-slot-btn"
+                            :class="{ 'is-unavailable': !slot.available }">
+                            {{ slot.time }}
+                        </el-button>
+                    </div>
+                </el-form-item>
+            </el-form>
+            <template #footer>
+                <span class="dialog-footer">
+                    <el-button @click="addAppointmentDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+                    <el-button type="primary" @click="submitAddAppointment" :loading="loadingAddAppointment">{{ $t('common.confirm') }}</el-button>
+                </span>
+            </template>
         </el-dialog>
     </div>
 </template>
@@ -715,7 +803,8 @@ const newSchedule = ref({
     reason: ''
 })
 const storeClosedSchedule = ref({
-    dateRange: [],
+    startDate: '',
+    endDate: '',
     isAllDay: true,
     reason: ''
 })
@@ -946,6 +1035,210 @@ const updateAppointmentTime = async () => {
         }
     } finally {
         loadingTimeUpdate.value = false
+    }
+}
+
+// Add Appointment Logic
+const addAppointmentDialogVisible = ref(false)
+const loadingAddAppointment = ref(false)
+const isManualGuest = ref(false)
+const newAppointment = ref({
+    userId: null,
+    guestName: '',
+    guestPhone: '',
+    stylistId: null,
+    serviceId: null,
+    date: '',
+    time: ''
+})
+
+const appointmentUnavailableDates = ref([])
+const appointmentAvailableSlots = ref([])
+const loadingAppointmentSlots = ref(false)
+
+const fetchAppointmentUnavailableDates = async () => {
+    if (!newAppointment.value.stylistId) {
+        appointmentUnavailableDates.value = []
+        return
+    }
+    
+    // Also, fetch settings if max_booking_date is empty (for admin)
+    if (!settingsForm.value.max_booking_date || !settingsForm.value.weekly_off_day) {
+        await fetchSettings()
+    }
+
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/schedules/unavailable-dates`, {
+            params: { stylistId: newAppointment.value.stylistId }
+        })
+        appointmentUnavailableDates.value = res.data || []
+    } catch (e) {
+        console.error('Failed to fetch unavailable dates', e)
+        appointmentUnavailableDates.value = []
+    }
+}
+
+const fetchAppointmentAvailableSlots = async () => {
+    if (!newAppointment.value.stylistId || !newAppointment.value.serviceId || !newAppointment.value.date) {
+        appointmentAvailableSlots.value = []
+        return
+    }
+
+    loadingAppointmentSlots.value = true
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/appointments/available-slots`, {
+            params: {
+                stylistId: newAppointment.value.stylistId,
+                date: newAppointment.value.date,
+                serviceId: newAppointment.value.serviceId,
+                _t: Date.now()
+            }
+        })
+        appointmentAvailableSlots.value = res.data || []
+    } catch (e) {
+        console.error('Failed to fetch slots', e)
+        appointmentAvailableSlots.value = []
+    } finally {
+        loadingAppointmentSlots.value = false
+    }
+}
+
+const appointmentDisabledDate = (time) => {
+    // Basic logic from BookingView.vue
+    // 1. Check if past
+    const isPast = time.getTime() < Date.now() - 8.64e7
+    if (isPast) return true
+
+    const year = time.getFullYear()
+    const month = String(time.getMonth() + 1).padStart(2, '0')
+    const day = String(time.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    // 2. Check if in unavailableDates (Store Closed / Stylist Off)
+    if (appointmentUnavailableDates.value.includes(dateStr)) {
+        return true
+    }
+
+    // 3. Check if weekly off day
+    const dayOfWeek = time.getDay()
+    if (settingsForm.value.weekly_off_day && settingsForm.value.weekly_off_day.map(Number).includes(dayOfWeek)) {
+        return true
+    }
+
+    // 4. Check max booking date
+    if (settingsForm.value.max_booking_date) {
+        const max = new Date(settingsForm.value.max_booking_date)
+        max.setHours(23, 59, 59, 999)
+        return time.getTime() > max.getTime()
+    }
+    return false
+}
+
+const handleNewAppointmentStylistChange = () => {
+    newAppointment.value.date = ''
+    newAppointment.value.time = ''
+    appointmentAvailableSlots.value = []
+    fetchAppointmentUnavailableDates()
+}
+
+const handleNewAppointmentServiceChange = () => {
+    newAppointment.value.time = ''
+    fetchAppointmentAvailableSlots()
+}
+
+const handleNewAppointmentDateChange = () => {
+    newAppointment.value.time = ''
+    fetchAppointmentAvailableSlots()
+}
+
+const openAddAppointmentDialog = async () => {
+    // ensure dependencies if not loaded
+    if (customerUserOptions.value.length === 0) await fetchCustomerUsers()
+    if (stylists.value.length === 0) await fetchStylists()
+    if (services.value.length === 0) await fetchServices()
+    if (timeOptions.value.length === 0) generateTimeOptions()
+    
+    // Reset form and state
+    newAppointment.value = {
+        userId: null,
+        guestName: '',
+        guestPhone: '',
+        stylistId: null,
+        serviceId: null,
+        date: '',
+        time: ''
+    }
+    isManualGuest.value = false
+
+    // Auto-select stylist if current user is STYLIST
+    if (userStore.dbUser && userStore.dbUser.role === 'STYLIST') {
+        const foundStylist = stylists.value.find(s => s.user && s.user.id === userStore.dbUser.id)
+        if (foundStylist) {
+            newAppointment.value.stylistId = foundStylist.id
+            fetchAppointmentUnavailableDates()
+        }
+    }
+    
+    appointmentUnavailableDates.value = []
+    appointmentAvailableSlots.value = []
+    
+    // Check if settings loaded for maxBookingDate
+    fetchSettings()
+    
+    addAppointmentDialogVisible.value = true
+}
+
+const submitAddAppointment = async () => {
+    // Validate Common Fields
+    if (!newAppointment.value.stylistId || !newAppointment.value.serviceId || !newAppointment.value.date || !newAppointment.value.time) {
+        ElMessage.warning(t('booking.fillAllFields'))
+        return
+    }
+
+    // Validate User (Either Existing or Manual Guest)
+    if (!isManualGuest.value && !newAppointment.value.userId) {
+        ElMessage.warning(t('booking.fillAllFields'))
+        return
+    }
+    if (isManualGuest.value && (!newAppointment.value.guestName || !newAppointment.value.guestPhone)) {
+         ElMessage.warning(t('booking.fillAllFields'))
+         return
+    }
+    
+    loadingAddAppointment.value = true
+    try {
+        const startTime = `${newAppointment.value.date}T${newAppointment.value.time}:00`
+        
+        const payload = {
+            stylistId: newAppointment.value.stylistId,
+            serviceId: newAppointment.value.serviceId,
+            startTime: startTime
+        }
+
+        if (isManualGuest.value) {
+            payload.guestName = newAppointment.value.guestName
+            payload.guestPhone = newAppointment.value.guestPhone
+        } else {
+            payload.userId = newAppointment.value.userId
+        }
+        
+        await axios.post(`${config.apiBaseUrl}/api/appointments`, payload)
+        
+        ElMessage.success(t('booking.success'))
+        addAppointmentDialogVisible.value = false
+        fetchAppointments()
+    } catch (error) {
+        console.error(error)
+        // If error is "Slot already booked", refresh available slots
+        if (error.response && error.response.status === 400 && error.response.data.includes("已被預約")) {
+            ElMessage.error(error.response.data)
+            newAppointment.value.time = ''
+            fetchAppointmentAvailableSlots()
+        } else {
+             ElMessage.error(error.response?.data || t('common.error'))
+        }
+    } finally {
+        loadingAddAppointment.value = false
     }
 }
 
@@ -1369,7 +1662,8 @@ const openStoreClosedDialog = () => {
     isEditingSchedule.value = false
     editingScheduleId.value = null
     storeClosedSchedule.value = {
-        dateRange: [],
+        startDate: null,
+        endDate: null,
         isAllDay: false,
         reason: t('admin.storeClosedDefaultReason')
     }
@@ -1382,13 +1676,26 @@ const toLocalISOString = (date) => {
 }
 
 const addStoreClosedSchedule = async () => {
-    if (!storeClosedSchedule.value.dateRange || storeClosedSchedule.value.dateRange.length !== 2) {
+    if (!storeClosedSchedule.value.startDate || !storeClosedSchedule.value.endDate) {
         ElMessage.warning(t('admin.selectDateRange'))
         return
     }
 
-    let start = storeClosedSchedule.value.dateRange[0]
-    let end = storeClosedSchedule.value.dateRange[1]
+    // Parse the date strings (YYYY-MM-DD)
+    const startDateStr = storeClosedSchedule.value.startDate;
+    const endDateStr = storeClosedSchedule.value.endDate;
+
+    // Create Date objects - ensure consistent local time parsing
+    // String 'YYYY-MM-DD' + 'T00:00:00' creates a local date object
+    let start = new Date(startDateStr + 'T00:00:00');
+    let end = new Date(endDateStr + 'T23:59:59');
+
+    // If invalid dates (shouldn't happen with date picker), handle them
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+         ElMessage.error(t('common.error'))
+         loadingStoreClosed.value = false
+         return
+    }
 
     loadingStoreClosed.value = true
     try {
@@ -1826,6 +2133,15 @@ const saveCustomerCard = async () => {
     background-color: #f0f9eb;
     font-weight: bold;
 }
+
+@media (max-width: 480px) {
+    .responsive-dialog {
+        width: 90% !important;
+        max-width: 95vw !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+}
 </style>
 
 <style scoped>
@@ -1921,12 +2237,6 @@ const saveCustomerCard = async () => {
 }
 
 @media (max-width: 480px) {
-    .responsive-dialog {
-        width: 100% !important;
-    }
-}
-
-@media (max-width: 480px) {
     .admin-container {
         padding: 20px 16px;
     }
@@ -2008,6 +2318,12 @@ const saveCustomerCard = async () => {
         margin-bottom: 5px;
     }
 
+    .appointment-controls .el-select {
+        width: 100% !important;
+        margin-right: 0 !important;
+        margin-bottom: 5px;
+    }
+
     .appointment-controls .date-separator {
         text-align: center;
         display: block;
@@ -2016,6 +2332,41 @@ const saveCustomerCard = async () => {
 
     .appointment-controls button {
         width: 100%;
+        margin-bottom: 5px;
     }
+
+    .appointment-controls .add-appointment-btn {
+        margin-left: 0 !important;
+    }
+}
+</style>
+
+<style scoped>
+.time-slots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+    width: 100%;
+}
+.time-slot-btn {
+    width: 100%;
+    margin: 0 !important;
+    padding: 8px 0;
+}
+.time-slots-placeholder {
+    color: #909399;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+    background: #f5f7fa;
+    border-radius: 4px;
+    width: 100%;
+}
+.is-unavailable {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #f5f7fa !important;
+    border-color: #e4e7ed !important;
+    color: #c0c4cc !important;
 }
 </style>

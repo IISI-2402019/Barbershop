@@ -83,6 +83,7 @@ const form = ref({
 })
 
 const maxBookingDate = ref(null)
+const weeklyOffDays = ref([])
 
 const fetchUnavailableDates = async () => {
     if (!form.value.stylistId) return
@@ -100,10 +101,15 @@ onMounted(async () => {
     // Fetch Settings
     try {
         const settingsRes = await axios.get(`${config.apiBaseUrl}/api/settings`)
-        if (settingsRes.data && settingsRes.data.max_booking_date) {
-            maxBookingDate.value = new Date(settingsRes.data.max_booking_date)
-            // Ensure the max date is inclusive by setting time to end of day
-            maxBookingDate.value.setHours(23, 59, 59, 999)
+        if (settingsRes.data) {
+            if (settingsRes.data.max_booking_date) {
+                maxBookingDate.value = new Date(settingsRes.data.max_booking_date)
+                // Ensure the max date is inclusive by setting time to end of day
+                maxBookingDate.value.setHours(23, 59, 59, 999)
+            }
+            if (settingsRes.data.weekly_off_day) {
+                weeklyOffDays.value = settingsRes.data.weekly_off_day.split(',').map(d => parseInt(d.trim())).filter(n => !isNaN(n))
+            }
         }
     } catch (e) {
         console.error('Failed to load settings', e)
@@ -144,6 +150,11 @@ const disabledDate = (time) => {
     const dateStr = `${year}-${month}-${day}`
 
     if (unavailableDates.value.includes(dateStr)) {
+        return true
+    }
+
+    // Check Weekly Off Day
+    if (weeklyOffDays.value.includes(time.getDay())) {
         return true
     }
 

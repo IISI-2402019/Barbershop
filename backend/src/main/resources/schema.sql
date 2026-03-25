@@ -21,13 +21,17 @@ ALTER TABLE services ADD COLUMN IF NOT EXISTS is_price_starting_from BOOLEAN DEF
 -- 如果資料表不存在，則建立 Users 表
 CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
-    line_user_id VARCHAR(255) NOT NULL UNIQUE,
+    line_user_id VARCHAR(255) UNIQUE,
     display_name VARCHAR(255),
     real_name VARCHAR(255),
     phone VARCHAR(50),
     role VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 修改 line_user_id 為可空 (並移除 UNIQUE 約束，在 PostgreSQL 中 UNIQUE + NULL 可並存，但為了保險我們分開處理)
+ALTER TABLE users ALTER COLUMN line_user_id DROP NOT NULL;
+-- 注意: H2 對於 UNIQUE NULL 的行為可能不同，PostgreSQL 是允許的。只要 line_user_id 設為 NULL 即可。
 
 -- 如果資料表不存在，則建立 Appointments 表
 CREATE TABLE IF NOT EXISTS appointments (

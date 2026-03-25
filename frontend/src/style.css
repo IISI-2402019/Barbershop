@@ -54,6 +54,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Prevent zoom on input focus for iOS */
+@media screen and (max-width: 768px) {
+
+  input,
+  select,
+  textarea,
+  .el-input__inner {
+    font-size: 16px !important;
+  }
+}
+
 #app {
   width: 100%;
   max-width: 1280px;

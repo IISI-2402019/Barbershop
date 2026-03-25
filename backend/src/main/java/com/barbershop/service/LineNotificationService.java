@@ -120,7 +120,7 @@ public class LineNotificationService {
     }
 
     private void sendPushMessage(String userId, String text) {
-        if (userId == null || userId.isEmpty())
+        if (messagingApiClient == null || userId == null || userId.isEmpty())
             return;
 
         try {
