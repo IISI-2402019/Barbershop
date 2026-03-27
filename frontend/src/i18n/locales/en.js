@@ -73,6 +73,8 @@ export default {
         cannotCancel: 'Cannot Cancel Online'
     },
     admin: {
+        edit: 'Edit',
+        lineDisplayName: 'LINE Nickname',
         appointments: 'Appointments',
         stylists: 'Stylists',
         personalSettings: 'Personal Settings',

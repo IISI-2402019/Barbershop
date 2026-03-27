@@ -22,4 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // Find users who have lineUserId set (for push notifications)
     List<User> findByLineUserIdIsNotNull();
+
+    // Find an existing guest account (no LINE ID) with the given phone, for merging on LINE login
+    Optional<User> findByPhoneAndLineUserIdIsNull(String phone);
 }

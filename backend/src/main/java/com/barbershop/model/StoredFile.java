@@ -5,7 +5,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "stored_files")
-public class StoredFile {
+public class StoredFile extends AuditableEntity {
     @Id
     private String id;
 

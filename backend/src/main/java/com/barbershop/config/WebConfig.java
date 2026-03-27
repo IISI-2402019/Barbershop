@@ -1,8 +1,11 @@
 package com.barbershop.config;
 
+import com.barbershop.interceptor.JwtAuthInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -11,6 +14,21 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.upload.dir}")
     private String uploadDir;
+
+    @Autowired
+    private JwtAuthInterceptor jwtAuthInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(jwtAuthInterceptor)
+                .addPathPatterns("/api/**") // Protect all API endpoints
+                .excludePathPatterns(
+                        "/api/users/login", // Exclude login
+                        "/api/upload",      // Exclude uploads (or secure it as needed)
+                        "/api/public/**",   // Allow any public endpoints later
+                        "/api/webhook"      // Exclude LINE webhook
+                );
+    }
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {

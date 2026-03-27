@@ -43,7 +43,7 @@ public class ScheduleController {
 
 
     @GetMapping("/unavailable-dates")
-    public List<String> getUnavailableDates(@RequestParam Long stylistId) {
+    public List<String> getUnavailableDates(@RequestParam(required = false) Long stylistId) {
         // Fetch all future schedules for this stylist (and global ones) that are marked as 'isAllDay'
         // Just fetching from "now" onwards for date picker validation
         LocalDateTime now = LocalDateTime.now().minusDays(1); // include today

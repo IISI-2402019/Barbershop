@@ -15,9 +15,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     // A schedule overlaps with [start, end] if:
     // (schedule.stylist.id = :stylistId OR schedule.stylist IS NULL) AND
     // schedule.startTime < end AND schedule.endTime > start
-    @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE (s.stylist.id = :stylistId OR s.stylist IS NULL) AND s.startTime < :end AND s.endTime > :start")
-    List<Schedule> findOverlappingSchedules(Long stylistId, LocalDateTime end, LocalDateTime start);
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE ((:stylistId IS NOT NULL AND (s.stylist.id = :stylistId OR s.stylist IS NULL)) OR (:stylistId IS NULL AND s.stylist IS NULL)) AND s.startTime < :end AND s.endTime > :start")
+    List<Schedule> findOverlappingSchedules(@org.springframework.data.repository.query.Param("stylistId") Long stylistId, @org.springframework.data.repository.query.Param("end") LocalDateTime end, @org.springframework.data.repository.query.Param("start") LocalDateTime start);
 
-    @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE (s.stylist.id = :stylistId OR s.stylist IS NULL) AND s.isAllDay = true AND s.startTime >= :start")
-    List<Schedule> findFutureUnavailableSchedules(Long stylistId, LocalDateTime start);
+    @org.springframework.data.jpa.repository.Query("SELECT s FROM Schedule s WHERE ((:stylistId IS NOT NULL AND (s.stylist.id = :stylistId OR s.stylist IS NULL)) OR (:stylistId IS NULL AND s.stylist IS NULL)) AND (s.isAllDay = true OR s.stylist IS NULL) AND s.startTime >= :start")
+    List<Schedule> findFutureUnavailableSchedules(@org.springframework.data.repository.query.Param("stylistId") Long stylistId, @org.springframework.data.repository.query.Param("start") LocalDateTime start);
 }

@@ -1,17 +1,23 @@
 package com.barbershop.controller;
 
 import com.barbershop.dto.LoginRequest;
+import com.barbershop.dto.LoginResponse;
+import com.barbershop.util.JwtUtil;
+import com.barbershop.model.Appointment;
+import com.barbershop.model.CustomerCard;
 import com.barbershop.model.User;
 import com.barbershop.model.UserRole;
 import com.barbershop.model.Stylist;
+import com.barbershop.repository.AppointmentRepository;
+import com.barbershop.repository.CustomerCardRepository;
 import com.barbershop.repository.UserRepository;
 import com.barbershop.repository.StylistRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
 import java.util.List;
+import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
@@ -23,6 +29,15 @@ public class UserController {
 
     @Autowired
     private StylistRepository stylistRepository;
+
+    @Autowired
+    private AppointmentRepository appointmentRepository;
+
+    @Autowired
+    private CustomerCardRepository customerCardRepository;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @GetMapping
     public ResponseEntity<List<User>> searchUsers(@RequestParam(required = false) String query,
@@ -90,7 +105,7 @@ public class UserController {
 
     @PostMapping("/login")
     @org.springframework.transaction.annotation.Transactional
-    public ResponseEntity<User> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         System.out.println("Login request received for Line User ID: " + request.getLineUserId()); // Debug log
         Optional<User> existingUser = userRepository.findByLineUserId(request.getLineUserId());
         if (existingUser.isPresent()) {
@@ -100,12 +115,14 @@ public class UserController {
                 user.setDisplayName(request.getDisplayName());
                 userRepository.save(user);
             }
-            return ResponseEntity.ok(user);
+            String token = jwtUtil.generateToken(user);
+            return ResponseEntity.ok(new LoginResponse(token, user));
         } else {
             // Register new user
             User newUser = new User(request.getLineUserId(), request.getDisplayName(), UserRole.CUSTOMER);
             User savedUser = userRepository.save(newUser);
-            return ResponseEntity.ok(savedUser);
+            String token = jwtUtil.generateToken(savedUser);
+            return ResponseEntity.ok(new LoginResponse(token, savedUser));
         }
     }
 
@@ -117,6 +134,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}/complete-profile")
+    @org.springframework.transaction.annotation.Transactional
     public ResponseEntity<?> completeProfile(@PathVariable Long id,
             @RequestBody java.util.Map<String, Object> payload) {
         String realName = (String) payload.get("realName");
@@ -146,12 +164,63 @@ public class UserController {
 
         Integer finalReminderCycle = reminderCycle;
 
-        return userRepository.findById(id).map(user -> {
-            user.setRealName(realName);
-            user.setPhone(phone);
-            user.setReminderCycle(finalReminderCycle);
-            userRepository.save(user);
-            return ResponseEntity.ok(user);
-        }).orElse(ResponseEntity.notFound().build());
+        Optional<User> currentUserOpt = userRepository.findById(id);
+        if (currentUserOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        User currentUser = currentUserOpt.get();
+
+        // --- Account Merge Logic ---
+        // Check if a guest account (no LINE ID) already exists with this phone number.
+        // This handles the case where an admin manually added a walk-in customer, and
+        // that customer later logs in via LINE for the first time.
+        Optional<User> existingGuestOpt = userRepository.findByPhoneAndLineUserIdIsNull(phone);
+
+        if (existingGuestOpt.isPresent() && !existingGuestOpt.get().getId().equals(currentUser.getId())) {
+            // Found a guest account to merge into. Current user must be a LINE user (has lineUserId).
+            User guestUser = existingGuestOpt.get();
+            String currentLineUserId = currentUser.getLineUserId();
+            String currentDisplayName = currentUser.getDisplayName();
+
+            // 1. Bind LINE info to the existing guest account
+            guestUser.setLineUserId(currentLineUserId);
+            guestUser.setDisplayName(currentDisplayName);
+            guestUser.setRealName(realName);
+            guestUser.setPhone(phone);
+            guestUser.setReminderCycle(finalReminderCycle);
+
+            // 2. Re-link any appointments the new LINE user may have (should be none, but be safe)
+            List<Appointment> lineUserAppointments = appointmentRepository.findByCustomer(currentUser);
+            for (Appointment appt : lineUserAppointments) {
+                appt.setCustomer(guestUser);
+            }
+            appointmentRepository.saveAll(lineUserAppointments);
+
+            // 3. Re-link any customer cards
+            List<CustomerCard> lineUserCards = customerCardRepository.findByUser(currentUser);
+            for (CustomerCard card : lineUserCards) {
+                card.setUser(guestUser);
+            }
+            customerCardRepository.saveAll(lineUserCards);
+
+            // 4. Save the merged guest account and delete the temp LINE user
+            // Clear lineUserId from the temp user first to avoid unique constraint violation
+            currentUser.setLineUserId(null);
+            userRepository.save(currentUser);
+            userRepository.flush(); // Ensure the NULL is committed before setting it on guest
+
+            userRepository.save(guestUser);
+            userRepository.delete(currentUser);
+
+            System.out.println("Account merged: LINE user (id=" + id + ") merged into guest user (id=" + guestUser.getId() + ")");
+            return ResponseEntity.ok(guestUser);
+        }
+
+        // --- Normal update (no merge needed) ---
+        currentUser.setRealName(realName);
+        currentUser.setPhone(phone);
+        currentUser.setReminderCycle(finalReminderCycle);
+        userRepository.save(currentUser);
+        return ResponseEntity.ok(currentUser);
     }
 }

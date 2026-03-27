@@ -25,7 +25,7 @@
                     <div style="margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                         <el-select v-model="customerCardUserId" filterable :placeholder="$t('admin.searchCustomer')"
                             style="width: 250px;" @change="fetchCustomerCards">
-                            <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                            <el-option v-for="u in customerUserOptions" :key="u.id" :label="formatUserLabel(u)"
                                 :value="u.id" />
                         </el-select>
                         <el-button type="primary" @click="fetchCustomerCards" :disabled="!customerCardUserId">{{
@@ -60,8 +60,10 @@
             </el-tab-pane>
             <el-tab-pane :label="$t('admin.schedule')" name="schedule">
                 <div class="schedule-management">
-                    <div class="schedule-controls" style="margin-bottom: 20px;">
+                    <div class="schedule-controls" style="margin-bottom: 20px; display: flex; gap: 10px;">
                         <el-button type="primary" @click="openAddScheduleDialog">{{ $t('admin.addSchedule')
+                            }}</el-button>
+                        <el-button type="danger" @click="openStoreClosedDialog">{{ $t('admin.addStoreClosed')
                             }}</el-button>
                     </div>
                     <FullCalendar ref="scheduleCalendarRef" :options="scheduleCalendarOptions" />
@@ -138,10 +140,9 @@
                             </template>
                         </el-table-column>
                         <el-table-column prop="phone" :label="$t('register.phone')" min-width="120" />
-                        <el-table-column :label="$t('admin.lineUser')" min-width="100">
+                        <el-table-column prop="displayName" :label="$t('admin.lineDisplayName')" min-width="120">
                              <template #default="scope">
-                                <el-tag v-if="scope.row.lineUserId" type="success">LINE</el-tag>
-                                <el-tag v-else type="info">{{ $t('common.guest') }}</el-tag>
+                                {{ scope.row.displayName || '-' }}
                             </template>
                         </el-table-column>
                         <el-table-column :label="$t('admin.role')" min-width="180">
@@ -244,14 +245,6 @@
                             }}</el-button>
                         </el-form-item>
                     </el-form>
-
-                    <el-divider />
-
-                    <div class="store-closed-management">
-                        <h3>{{ $t('admin.storeClosed') }}</h3>
-                        <el-button type="danger" @click="openStoreClosedDialog">{{ $t('admin.addStoreClosed')
-                        }}</el-button>
-                    </div>
                 </div>
             </el-tab-pane>
         </el-tabs>
@@ -300,7 +293,8 @@
                         <el-form-item style="margin-bottom: 0; width: 150px;">
                             <el-date-picker v-model="newSchedule.startDate" type="date"
                                 :placeholder="$t('admin.startDate')" style="width: 100%;" format="YYYY-MM-DD"
-                                value-format="YYYY-MM-DD" :default-value="new Date()" />
+                                value-format="YYYY-MM-DD" :default-value="new Date()"
+                                :disabled-date="scheduleDisabledDate" />
                         </el-form-item>
                         <el-form-item style="margin-bottom: 0; width: 120px;">
                             <el-select v-model="newSchedule.startTimeStr" :placeholder="$t('booking.time')"
@@ -318,7 +312,8 @@
                         <el-form-item style="margin-bottom: 0; width: 150px;">
                             <el-date-picker v-model="newSchedule.endDate" type="date" :placeholder="$t('admin.endDate')"
                                 style="width: 100%;" format="YYYY-MM-DD" value-format="YYYY-MM-DD"
-                                :default-value="new Date()" />
+                                :default-value="new Date()"
+                                :disabled-date="scheduleDisabledDate" />
                         </el-form-item>
                         <el-form-item style="margin-bottom: 0; width: 120px;">
                             <el-select v-model="newSchedule.endTimeStr" :placeholder="$t('booking.time')"
@@ -350,11 +345,13 @@
                 <el-form-item :label="$t('admin.startDate')">
                     <el-date-picker v-model="storeClosedSchedule.startDate" type="date"
                         :placeholder="$t('admin.startDate')" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%"
+                        :disabled-date="scheduleDisabledDate"
                         @change="(val) => { if (val) storeClosedSchedule.endDate = val }" />
                 </el-form-item>
                 <el-form-item :label="$t('admin.endDate')">
                     <el-date-picker v-model="storeClosedSchedule.endDate" type="date"
-                        :placeholder="$t('admin.endDate')" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%" />
+                        :placeholder="$t('admin.endDate')" format="YYYY-MM-DD" value-format="YYYY-MM-DD" style="width: 100%"
+                        :disabled-date="scheduleDisabledDate" />
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -479,7 +476,7 @@
                 <el-form-item :label="$t('admin.customerName')" v-if="!customerCardForm.id">
                     <el-select v-model="customerCardForm.userId" filterable
                         :placeholder="$t('admin.selectCustomerPlaceholder')" style="width: 100%">
-                        <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                        <el-option v-for="u in customerUserOptions" :key="u.id" :label="formatUserLabel(u)"
                             :value="u.id" />
                     </el-select>
                 </el-form-item>
@@ -549,7 +546,7 @@
                 <!-- Select User Mode -->
                 <el-form-item v-if="!isManualGuest" :label="$t('admin.selectUser')" required>
                     <el-select v-model="newAppointment.userId" filterable :placeholder="$t('admin.selectUser')" style="width: 100%">
-                         <el-option v-for="u in customerUserOptions" :key="u.id" :label="u.realName || u.displayName"
+                         <el-option v-for="u in customerUserOptions" :key="u.id" :label="formatUserLabel(u)"
                                 :value="u.id" />
                     </el-select>
                 </el-form-item>
@@ -691,6 +688,14 @@ const previewVisible = ref(false)
 const previewImageUrl = ref('')
 const customerCardUserId = ref(null)
 const customerUserOptions = ref([])
+
+const formatUserLabel = (u) => {
+    if (u.realName) {
+        return u.displayName ? `${u.realName} (${u.displayName})` : u.realName;
+    }
+    return u.displayName || t('common.guest');
+}
+
 const customerCardList = ref([])
 const loadingCustomerCards = ref(false)
 const customerCardImagesVisible = ref(false)
@@ -841,6 +846,7 @@ const deleteSchedule = async () => {
             ElMessage.success(t('admin.scheduleDeleted'))
             scheduleDetailVisible.value = false
             await fetchSchedules()
+            await fetchGlobalStoreClosedDates()
         } catch (error) {
             console.error('Failed to delete schedule', error)
             ElMessage.error(t('common.error'))
@@ -859,8 +865,9 @@ const openEditSchedule = () => {
 
     if (selectedSchedule.value.isStoreClosed) {
         storeClosedSchedule.value = {
-            dateRange: [start, end],
-            isAllDay: selectedSchedule.value.allDay,
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
+            isAllDay: true,
             reason: selectedSchedule.value.reason
         }
         storeClosedDialogVisible.value = true
@@ -1053,8 +1060,19 @@ const newAppointment = ref({
 })
 
 const appointmentUnavailableDates = ref([])
+const globalStoreClosedDates = ref([])
 const appointmentAvailableSlots = ref([])
 const loadingAppointmentSlots = ref(false)
+
+const fetchGlobalStoreClosedDates = async () => {
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/schedules/unavailable-dates`)
+        globalStoreClosedDates.value = res.data || []
+    } catch (e) {
+        console.error('Failed to fetch global store closed dates', e)
+        globalStoreClosedDates.value = []
+    }
+}
 
 const fetchAppointmentUnavailableDates = async () => {
     if (!newAppointment.value.stylistId) {
@@ -1101,6 +1119,26 @@ const fetchAppointmentAvailableSlots = async () => {
     } finally {
         loadingAppointmentSlots.value = false
     }
+}
+
+const scheduleDisabledDate = (time) => {
+    // 1. 檢查是否為公休日 (每週固定休)
+    const dayOfWeek = time.getDay()
+    if (settingsForm.value.weekly_off_day && settingsForm.value.weekly_off_day.map(Number).includes(dayOfWeek)) {
+        return true
+    }
+    
+    // 2. 檢查是否為特殊公休日 (全店休)
+    const year = time.getFullYear()
+    const month = String(time.getMonth() + 1).padStart(2, '0')
+    const day = String(time.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    
+    if (globalStoreClosedDates.value.includes(dateStr)) {
+        return true
+    }
+    
+    return false
 }
 
 const appointmentDisabledDate = (time) => {
@@ -1545,6 +1583,7 @@ onMounted(async () => {
     // Force fetch defaults if user is admin
     if (userStore.dbUser?.role === 'ADMIN' || userStore.dbUser?.role === 'STYLIST') {
         fetchSettings()
+        fetchGlobalStoreClosedDates()
 
         if (userStore.dbUser.role === 'STYLIST') {
             await fetchStylists()
@@ -1567,6 +1606,7 @@ onMounted(async () => {
 watch(() => userStore.dbUser, async (newUser) => {
     if (newUser?.role === 'ADMIN' || newUser?.role === 'STYLIST') {
         fetchSettings()
+        fetchGlobalStoreClosedDates()
         if (newUser.role === 'STYLIST') {
             await fetchStylists()
             const myStylist = stylists.value.find(s => s.user && s.user.id === newUser.id)
@@ -1664,7 +1704,7 @@ const openStoreClosedDialog = () => {
     storeClosedSchedule.value = {
         startDate: null,
         endDate: null,
-        isAllDay: false,
+        isAllDay: true,
         reason: t('admin.storeClosedDefaultReason')
     }
     storeClosedDialogVisible.value = true
@@ -1703,7 +1743,7 @@ const addStoreClosedSchedule = async () => {
             stylistId: null, // Null means Global/Store Closed
             startTime: toLocalISOString(start),
             endTime: toLocalISOString(end),
-            isAllDay: false,
+            isAllDay: true,
             reason: t('admin.storeClosedDefaultReason')
         }
 
@@ -1717,6 +1757,7 @@ const addStoreClosedSchedule = async () => {
 
         storeClosedDialogVisible.value = false
         await fetchSchedules()
+        await fetchGlobalStoreClosedDates()
     } catch (error) {
         console.error('Failed to save store closed schedule', error)
         ElMessage.error(t('common.error'))

@@ -75,6 +75,8 @@ export default {
         cannotCancel: '無法線上取消'
     },
     admin: {
+        edit: '編輯',
+        lineDisplayName: 'LINE暱稱',
         appointments: '預約管理',
         stylists: '設計師管理',
         personalSettings: '個人設定',

@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "system_settings")
-public class SystemSetting {
+public class SystemSetting extends AuditableEntity {
 
     @Id
     @Column(name = "setting_key", nullable = false, unique = true)
