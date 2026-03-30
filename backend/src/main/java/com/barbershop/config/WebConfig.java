@@ -25,6 +25,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/users/login", // Exclude login
                         "/api/upload",      // Exclude uploads (or secure it as needed)
+                        "/api/upload/**",   // Exclude uploaded image previews
                         "/api/public/**",   // Allow any public endpoints later
                         "/api/webhook"      // Exclude LINE webhook
                 );

@@ -445,7 +445,8 @@
             <el-form :model="editTimeForm" label-width="100px" label-position="top">
                 <el-form-item :label="$t('booking.date')">
                     <el-date-picker v-model="editTimeForm.date" type="date" format="YYYY-MM-DD"
-                        value-format="YYYY-MM-DD" :placeholder="$t('booking.selectDate')" style="width: 100%;" />
+                        value-format="YYYY-MM-DD" :placeholder="$t('booking.selectDate')" style="width: 100%;"
+                        :disabled-date="editTimeDisabledDate" />
                 </el-form-item>
                 <div style="display: flex; gap: 10px;">
                     <el-form-item :label="$t('admin.newStartTime')" style="flex: 1;">
@@ -921,6 +922,7 @@ const handleEventClick = (info) => {
         endTime: info.event.end,
         serviceName: props.serviceName,
         stylistName: props.stylistName,
+        stylistId: props.stylistId,
         status: props.status
     }
     appointmentDetailVisible.value = true
@@ -956,6 +958,7 @@ const cancelAppointment = async () => {
 const editTimeDialogVisible = ref(false)
 const loadingTimeUpdate = ref(false)
 const timeOptions = ref([]) // Generated 30-min slots
+const editTimeUnavailableDates = ref([])
 const editTimeForm = ref({
     date: '',
     startTimeStr: '',
@@ -976,10 +979,46 @@ const generateTimeOptions = () => {
     timeOptions.value = slots
 }
 
+const fetchEditTimeUnavailableDates = async (stylistId) => {
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/schedules/unavailable-dates`, {
+            params: { stylistId: stylistId }
+        })
+        editTimeUnavailableDates.value = res.data || []
+    } catch (e) {
+        console.error('Failed to fetch unavailable dates for edit', e)
+        editTimeUnavailableDates.value = []
+    }
+}
+
+const editTimeDisabledDate = (time) => {
+    const isPast = time.getTime() < Date.now() - 8.64e7
+    if (isPast) return true
+
+    const year = time.getFullYear()
+    const month = String(time.getMonth() + 1).padStart(2, '0')
+    const day = String(time.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    if (editTimeUnavailableDates.value.includes(dateStr)) return true
+
+    const dayOfWeek = time.getDay()
+    if (settingsForm.value.weekly_off_day && settingsForm.value.weekly_off_day.map(Number).includes(dayOfWeek)) return true
+
+    if (globalStoreClosedDates.value.includes(dateStr)) return true
+
+    return false
+}
+
 const openEditTimeDialog = () => {
     // Hide detail dialog
     appointmentDetailVisible.value = false
     generateTimeOptions()
+
+    // Fetch unavailable dates for this stylist
+    if (selectedAppointment.value.stylistId) {
+        fetchEditTimeUnavailableDates(selectedAppointment.value.stylistId)
+    }
 
     // Init form with ISO strings
     const start = selectedAppointment.value.startTime
@@ -1853,6 +1892,7 @@ const fetchAppointments = async () => {
                     customerPhone: appt.customer.phone,
                     serviceName: appt.service.name,
                     stylistName: appt.stylist.name,
+                    stylistId: appt.stylist.id,
                     status: appt.status
                 }
             }

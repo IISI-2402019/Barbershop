@@ -76,8 +76,27 @@ const newDate = ref('')
 const newTime = ref('')
 const newServiceId = ref(null)
 const availableSlots = ref([])
+const maxBookingDate = ref(null)
+const weeklyOffDays = ref([])
+const unavailableDates = ref([])
 
 onMounted(async () => {
+    // Fetch Settings
+    try {
+        const settingsRes = await axios.get(`${config.apiBaseUrl}/api/settings`)
+        if (settingsRes.data) {
+            if (settingsRes.data.max_booking_date) {
+                maxBookingDate.value = new Date(settingsRes.data.max_booking_date)
+                maxBookingDate.value.setHours(23, 59, 59, 999)
+            }
+            if (settingsRes.data.weekly_off_day) {
+                weeklyOffDays.value = settingsRes.data.weekly_off_day.split(',').map(d => parseInt(d.trim())).filter(n => !isNaN(n))
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load settings', e)
+    }
+
     if (userStore.dbUser) {
         await fetchAppointments()
         await fetchServices()
@@ -126,6 +145,17 @@ const isToday = (dateString) => {
         date.getFullYear() === today.getFullYear()
 }
 
+const fetchUnavailableDates = async (stylistId) => {
+    try {
+        const res = await axios.get(`${config.apiBaseUrl}/api/schedules/unavailable-dates`, {
+            params: { stylistId: stylistId }
+        })
+        unavailableDates.value = res.data
+    } catch (e) {
+        console.error('Failed to fetch unavailable dates', e)
+    }
+}
+
 const handleEdit = (appt) => {
     if (isToday(appt.startTime)) {
         ElMessageBox.alert(t('appointments.callToReschedule'), t('appointments.cannotEdit'), {
@@ -138,6 +168,9 @@ const handleEdit = (appt) => {
     newTime.value = ''
     newServiceId.value = appt.service.id
     availableSlots.value = []
+    
+    fetchUnavailableDates(appt.stylist.id)
+    
     editDialogVisible.value = true
 }
 
@@ -169,7 +202,27 @@ const handleDelete = (appt) => {
 }
 
 const disabledDate = (time) => {
-    return time.getTime() < Date.now()
+    const isPast = time.getTime() < Date.now() - 8.64e7
+    if (isPast) return true
+
+    const year = time.getFullYear()
+    const month = String(time.getMonth() + 1).padStart(2, '0')
+    const day = String(time.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    if (unavailableDates.value.includes(dateStr)) {
+        return true
+    }
+
+    // Check Weekly Off Day
+    if (weeklyOffDays.value.includes(time.getDay())) {
+        return true
+    }
+
+    if (maxBookingDate.value) {
+        return time.getTime() > maxBookingDate.value.getTime()
+    }
+    return false
 }
 
 const toLocalISOString = (date) => {
